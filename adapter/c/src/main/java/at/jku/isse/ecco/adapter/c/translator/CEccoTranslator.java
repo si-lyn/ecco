@@ -40,9 +40,7 @@ public class CEccoTranslator {
             startLine = functionStructure.getEndLine() + 1;
         }
 
-        if (this.functionStructures.size() > 0) {
-            this.addLineNodes(pluginNode, startLine, this.codeLines.length);
-        }
+        this.addLineNodes(pluginNode, startLine, this.codeLines.length);
     }
 
     private void sortFunctionStructures(){
