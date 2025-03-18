@@ -248,6 +248,8 @@ public interface Node extends Persistable {
 		 */
 		public void setParent(Node.Op parent);
 
+		void setChildren(List<Op> children);
+
 		@Override
 		public List<? extends Op> getChildren();
 
@@ -257,6 +259,8 @@ public interface Node extends Persistable {
 		 * @param child Child node to be added.
 		 */
 		public void addChild(Op child);
+
+		void addChildWithoutNumberUpdate(Op child);
 
 		/**
 		 * Adds a list of children to this node.
@@ -339,6 +343,10 @@ public interface Node extends Persistable {
 		public default void checkConsistency() {
 			Trees.checkConsistency(this);
 		}
+
+		int getNumberOfChildren();
+
+		void updateNumberOfChildren();
 
 	}
 

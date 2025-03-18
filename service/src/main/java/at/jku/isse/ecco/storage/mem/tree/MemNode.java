@@ -19,15 +19,22 @@ public class MemNode implements Node, Node.Op {
 
 	private boolean unique = true;
 
-	private final List<Op> children = new ArrayList<>();
+	private transient List<Op> children = new ArrayList<>();
 
 	private Artifact.Op<?> artifact = null;
 
-	private Op parent = null;
+	private transient Op parent = null;
+
+	private Integer numberOfChildren = 0;
 
 
 	@Deprecated
 	public MemNode() {
+	}
+
+	@Override
+	public void updateNumberOfChildren(){
+		this.numberOfChildren = this.children.size();
 	}
 
 	public MemNode(Artifact.Op<?> artifact) {
@@ -89,10 +96,15 @@ public class MemNode implements Node, Node.Op {
 		this.unique = unique;
 	}
 
-
 	@Override
 	public void addChild(Op child) {
+		this.addChildWithoutNumberUpdate(child);
+		this.numberOfChildren = this.children.size();
+	}
+
+	public void addChildWithoutNumberUpdate(Op child){
 		checkNotNull(child);
+		if (this.children == null){ this.children = new ArrayList<>(); }
 
 		if (this.getArtifact() != null && !this.getArtifact().isOrdered() && this.children.contains(child))
 			throw new EccoException("An equivalent child is already contained. If multiple equivalent children are allowed use an ordered node.");
@@ -105,6 +117,11 @@ public class MemNode implements Node, Node.Op {
 	public void addChildren(Op... children) {
 		for (Op child : children)
 			this.addChild(child);
+	}
+
+	@Override
+	public void setChildren(List<Op> children) {
+		this.children = children;
 	}
 
 	@Override
@@ -123,6 +140,15 @@ public class MemNode implements Node, Node.Op {
 		return this.children;
 	}
 
+	@Override
+	public int getNumberOfChildren() {
+		if (this.children == null && this.numberOfChildren == null){
+			return 0;
+		} else if (this.numberOfChildren == null){
+			return 0;
+		}
+		return this.numberOfChildren;
+	}
 
 	@Override
 	public int hashCode() {
