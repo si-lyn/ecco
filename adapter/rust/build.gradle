@@ -1,0 +1,57 @@
+plugins {
+    id 'java'
+    id "de.undercouch.download" version "5.6.0"
+    id 'antlr'
+}
+
+group = 'at.jku.isse.ecco'
+version = '0.1.9'
+ecco.adapter = true
+
+
+repositories {
+  mavenCentral()
+}
+
+dependencies {
+    antlr "org.antlr:antlr4:4.13.1"
+    implementation "org.antlr:antlr4-runtime:4.13.1"
+
+    implementation project(':ecco-base')
+    implementation project(':ecco-service')
+    testImplementation platform('org.junit:junit-bom:5.9.1')
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+}
+
+tasks.register('downloadRustGrammar', Download) {
+    src([
+            'https://raw.githubusercontent.com/antlr/grammars-v4/master/rust/RustLexer.g4',
+            'https://raw.githubusercontent.com/antlr/grammars-v4/master/rust/RustParser.g4'
+    ])
+    dest file("$projectDir/src/main/antlr/")
+    overwrite true
+}
+test {
+  useJUnitPlatform()
+}
+
+generateGrammarSource {
+    dependsOn downloadRustGrammar
+    outputDirectory = new File("${project.projectDir}/src/main/java/at/jku/isse/ecco/adapter/rust/antlr".toString())
+    arguments += ['-visitor', '-listener']
+    arguments += ['-package', 'at.jku.isse.ecco.adapter.rust.antlr']
+}
+
+generateTestGrammarSource {
+    outputDirectory = new File("${project.projectDir}/src/test/java/at/jku/isse/ecco/adapter/rust/antlr".toString())
+    arguments += ['-package', 'at.jku.isse.ecco.adapter.rust.antlr']
+}
+
+test {
+    testLogging {
+        events "passed", "skipped", "failed"
+    }
+}
+
+compileJava.dependsOn generateGrammarSource
+compileTestJava.dependsOn generateTestGrammarSource
