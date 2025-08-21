@@ -24,3 +24,5 @@ adapter/rust/src/main/antlr/**
 
 # generated parser and lexer
 adapter/rust/src/main/java/at/jku/isse/ecco/adapter/rust/antlr/**
+
+adapter/rust/src/main/gen
