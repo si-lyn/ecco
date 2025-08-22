@@ -32,6 +32,24 @@ tasks.register('downloadRustGrammar', Download) {
     overwrite true
 }
 
+tasks.register('addPackageDeclaration') {
+    def packageLine = 'package at.jku.isse.ecco.adapter.rust.antlr;\n'
+    def targetFiles = [
+            file("$projectDir/src/main/java/at/jku/isse/ecco/adapter/rust/antlr/RustLexerBase.java"),
+            file("$projectDir/src/main/java/at/jku/isse/ecco/adapter/rust/antlr/RustParserBase.java")
+    ]
+    doLast {
+        targetFiles.each { file ->
+            if (file.exists()) {
+                def content = file.text
+                if (!content.startsWith(packageLine)) {
+                    file.text = packageLine + content
+                }
+            }
+        }
+    }
+}
+
 tasks.register('downloadBaseParserBaselexer', Download) {
     src([
             'https://raw.githubusercontent.com/antlr/grammars-v4/master/rust/Java/RustLexerBase.java',
@@ -41,8 +59,11 @@ tasks.register('downloadBaseParserBaselexer', Download) {
     overwrite true
 }
 
+downloadBaseParserBaselexer.finalizedBy addPackageDeclaration
 
-test {
+
+
+        test {
   useJUnitPlatform()
 }
 
