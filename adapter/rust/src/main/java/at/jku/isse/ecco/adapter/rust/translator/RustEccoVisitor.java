@@ -34,6 +34,9 @@ public class RustEccoVisitor extends RustParserBaseVisitor<Node.Op> {
         this.entityFactory = entityFactory;
         this.path = path;
         this.configuration = configuration;
+        if (this.pluginNode == null) {
+            throw new EccoException("Plugin node cannot be null.");
+        }
         nodeStack.push(pluginNode);
     }
 
@@ -49,7 +52,7 @@ public class RustEccoVisitor extends RustParserBaseVisitor<Node.Op> {
      */
     @Override
     public Node.Op visitCrate(RustParser.CrateContext ctx) {
-        for (ParseTree parseTree : ctx.item()) {
+        for (ParseTree parseTree : ctx.children) {
             parseTree.accept(this);
         }
         return this.pluginNode;
@@ -244,10 +247,11 @@ public class RustEccoVisitor extends RustParserBaseVisitor<Node.Op> {
         return node;
     }
 
+
     @Override
     public Node.Op visitInnerAttribute(RustParser.InnerAttributeContext ctx) {
-        Artifact.Op<InnerAttributeArtifactData> item = this.entityFactory.createArtifact(new InnerAttributeArtifactData(getString(ctx)));
-        return createArtifactOrderedNodeAndAddToParent(item, this.nodeStack.peek());
+        Artifact.Op<InnerAttributeArtifactData> artifact = this.entityFactory.createArtifact(new InnerAttributeArtifactData(getString(ctx)));
+        return createArtifactOrderedNodeAndAddToParent(artifact, this.nodeStack.peek());
     }
 
     @Override
@@ -281,18 +285,21 @@ public class RustEccoVisitor extends RustParserBaseVisitor<Node.Op> {
 
         // Inside visitEnumeration
         int enumStartLine = ctx.getStart().getLine();
+        int enumStartPos = ctx.getStart().getCharPositionInLine();
         int enumEndLine = ctx.getStop().getLine();
+        int enumEndPos = ctx.getStop().getCharPositionInLine() + ctx.getStop().getText().length();
 
         if (ctx.enumItems() == null) {
             // No enum items, add all lines of the enum
-            this.addLineNodes(node, enumStartLine, enumEndLine);
+            this.addLineNodesFromContext(node, ctx);
             return node;
         }
         int itemsStartLine = ctx.enumItems().getStart().getLine();
         int itemsEndLine = ctx.enumItems().getStop().getLine();
 
         // Add lines before enumItems
-        this.addLineNodes(node, enumStartLine, itemsStartLine-1);
+        // max value is handled my addLineNodes method
+        this.addLineNodes(node, enumStartLine, itemsStartLine - 1, enumStartPos, Integer.MAX_VALUE);
 
         // Visit enumItems to add them as child nodes
         this.nodeStack.push(node);
