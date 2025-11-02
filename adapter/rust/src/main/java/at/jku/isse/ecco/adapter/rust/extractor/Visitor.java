@@ -45,10 +45,6 @@ public class Visitor extends RustParserBaseVisitor<Object> {
 
     @Override
     public Object visitCfgAttribute(RustParser.CfgAttributeContext ctx) {
-        // check if we are inside a macro
-        if (isInsideMacro(ctx)) {
-            return null; // skip removal inside macros
-        }
         Formula formula = this.configVisitor.visitCfgAttribute(ctx);
         boolean isFeatureUsed = formula.evaluate(this.assignment);
         // If the feature is not used, remove the corresponding lines from codeLines
@@ -70,13 +66,7 @@ public class Visitor extends RustParserBaseVisitor<Object> {
 
     private ParseTree findRemovalTarget(ParseTree ctx) {
         ParseTree current = ctx;
-        // skip attributes
-        while ((current instanceof RustParser.OuterAttributeContext ||
-                current instanceof RustParser.InnerAttributeContext)) {
-            current = current.getParent();
-        }
-
-        // now find the next item or statement or expression
+        // find the next item or statement or expression
         while (current != null &&
                 !(current instanceof RustParser.ItemContext) &&
                 !(current instanceof RustParser.StatementContext) &&
@@ -97,25 +87,6 @@ public class Visitor extends RustParserBaseVisitor<Object> {
         for (int i = startLine; i <= endLine; i++) {
             this.codeLines[i] = null;
         }
-    }
-
-    private boolean isInsideMacro(ParseTree ctx) {
-        ParseTree current = ctx;
-        if (current == null) {
-            System.out.println("Context is null, cannot determine if inside macro.");
-        }
-        while (current != null) {
-            if (current instanceof RustParser.MacroInvocationContext ||
-                    current instanceof RustParser.MacroInvocationSemiContext ||
-                    current instanceof RustParser.MacroRulesDefinitionContext ||
-                    current instanceof RustParser.MacroItemContext ||
-            current instanceof RustParser.TokenTreeContext) {
-                System.out.println("Skipping removal inside macro for context: " + ctx.getText());
-                return true;
-            }
-            current = current.getParent();
-        }
-        return false;
     }
 
 }

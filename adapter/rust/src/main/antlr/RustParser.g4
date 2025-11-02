@@ -58,7 +58,15 @@ tokenTreeToken
     | macroLiteralToken
     | macroPunctuationToken
     | macroRepOp
+    | macroDocumentation
     | DOLLAR
+    ;
+
+macroDocumentation
+    : INNER_LINE_DOC
+    | INNER_BLOCK_DOC
+    | OUTER_LINE_DOC
+    | OUTER_BLOCK_DOC
     ;
 
 macroInvocationSemi
@@ -428,12 +436,13 @@ forLifetimes
 
 // 6.15
 associatedItem
-    : (macroInvocationSemi | visibility? ( typeAlias | constantItem | function_))
+    : outerAttribute* (macroInvocationSemi | visibility? ( typeAlias | constantItem | function_))
     ;
 
 // 7
 innerAttribute
     : POUND NOT LSQUAREBRACKET attr RSQUAREBRACKET
+    | docComment
     ;
 
 outerAttribute
