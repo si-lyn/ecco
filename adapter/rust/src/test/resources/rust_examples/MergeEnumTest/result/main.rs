@@ -1,6 +1,6 @@
 #[derive(Subcommand, Debug, Clone)]
 #[command(rename_all = "lowercase")]
-enum Commands {
+pub enum Commands {
     /// Create a new user with a password
     Create {
         /// The username for the new user

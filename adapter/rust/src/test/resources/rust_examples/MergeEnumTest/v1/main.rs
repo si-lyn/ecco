@@ -1,6 +1,6 @@
 #[derive(Subcommand, Debug, Clone)]
 #[command(rename_all = "lowercase")]
-enum Commands {
+pub enum Commands {
     /// Change the password for an existing user
     Change {
         /// The username whose password will be changed
