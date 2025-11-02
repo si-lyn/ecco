@@ -146,7 +146,8 @@ OUTER_BLOCK_DOC:
 
 BLOCK_COMMENT_OR_DOC: ( BLOCK_COMMENT | INNER_BLOCK_DOC | OUTER_BLOCK_DOC) ;
 
-SHEBANG: {this.SOF()}? '\ufeff'? '#!' ~[\r\n]* -> channel(HIDDEN);
+SHEBANG: {this.SOF()}? '\ufeff'? '#!' ~'[' ~[\r\n]* -> channel(HIDDEN) ;
+
 
 //ISOLATED_CR
 // : '\r' {_input.LA(1)!='\n'}// not followed with \n ;
