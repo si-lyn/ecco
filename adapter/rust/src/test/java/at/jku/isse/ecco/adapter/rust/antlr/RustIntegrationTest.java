@@ -14,6 +14,9 @@ import java.nio.file.Paths;
 import java.util.List;
 import java.util.stream.Stream;
 
+import static at.jku.isse.ecco.adapter.rust.antlr.Utils.assertFilesEqual;
+import static at.jku.isse.ecco.adapter.rust.antlr.Utils.deleteDirectoryRecursively;
+
 class RustIntegrationTest {
     final Path testDir = Paths.get("src/test/resources/rust_examples/test_output").toAbsolutePath();
     EccoService service;
@@ -158,42 +161,6 @@ class RustIntegrationTest {
         service.setBaseDir(dir);
         service.commit();
         service.setBaseDir(this.testDir);
-    }
-
-    private void assertFilesEqual(Path excepted, Path actual) throws Exception {
-        if (!Files.exists(excepted)) throw new IllegalArgumentException("File does not exist: " + excepted);
-        if (!Files.exists(actual)) throw new IllegalArgumentException("File does not exist: " + actual);
-
-        StringBuilder diffReport = new StringBuilder();
-        boolean filesAreEqual = true;
-
-        List<String> expectedLines = Files.readAllLines(excepted);
-        List<String> actualLines = Files.readAllLines(actual);
-        int maxLines = Math.max(expectedLines.size(), actualLines.size());
-        for (int i = 0; i < maxLines; i++) {
-            String expectedLine = i < expectedLines.size() ? expectedLines.get(i).trim() : "<no line>";
-            String actualLine = i < actualLines.size() ? actualLines.get(i).trim() : "<no line>";
-            if (!expectedLine.equals(actualLine)) {
-                filesAreEqual = false;
-                diffReport.append(String.format("Line %d differs:%nExpected: %s%nActual:   %s%n%n", i + 1, expectedLine, actualLine));
-            }
-        }
-        if (!filesAreEqual)  Assertions.fail("Files are not equal:\n" + diffReport);
-    }
-
-    private void deleteDirectoryRecursively(Path path) throws IOException {
-        if (Files.exists(path)) {
-            try (Stream<Path> walk = Files.walk(path)) {
-                walk.sorted((a, b) -> b.compareTo(a)) // delete children before parents
-                        .forEach(p -> {
-                            try {
-                                Files.deleteIfExists(p);
-                            } catch (IOException e) {
-                                System.err.println("Failed to delete: " + p);
-                            }
-                        });
-            }
-        }
     }
 
 }
