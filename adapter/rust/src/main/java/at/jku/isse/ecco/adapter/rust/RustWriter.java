@@ -57,16 +57,19 @@ public class RustWriter implements ArtifactWriter<Set<Node>, Path> {
      * @param orderedNode Node representing the structure of the Rust file.
      */
     private void writeRustFile(Path filePath, Node orderedNode){
+        List<? extends Node> fileNodeChildren = orderedNode.getChildren();
+        if (fileNodeChildren == null) {
+            throw new EccoException("File node has no children.");
+        }
+        if (fileNodeChildren.isEmpty()) {
+            return; // Nothing to write
+        }
         try (BufferedWriter bw = Files.newBufferedWriter(filePath)) {
-            List<? extends Node> fileNodeChildren = orderedNode.getChildren();
-            if (fileNodeChildren == null || fileNodeChildren.isEmpty()) {
-                throw new EccoException("File node has no children.");
-            }
             for (Node childNode : fileNodeChildren) {
                 visitingNode(bw, childNode);
             }
         } catch (IOException e) {
-            throw new EccoException("Could not write Rust file.", e);
+            throw new EccoException("Could not write Rust file:" + filePath, e);
         }
     }
 
