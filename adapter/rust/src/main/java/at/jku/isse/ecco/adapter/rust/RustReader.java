@@ -21,10 +21,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
+import java.util.concurrent.*;
 import java.util.stream.Stream;
 
 import static com.google.common.base.Preconditions.checkNotNull;
@@ -67,40 +64,46 @@ public class RustReader implements ArtifactReader<Path, Set<Node.Op>> {
     @Override
     public Set<Node.Op> read(Path base, Path[] input) {
         Set<Node.Op> nodes = Collections.synchronizedSet(new HashSet<>());
-        List<Future<?>> futures = new ArrayList<>();
         String configuration = getConfigurationString(base);
+
+        List<Callable<Void>> tasks = new ArrayList<>(input.length);
 
         // process each file in parallel
         for (Path path : input) {
-            try (ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor()) {
-                futures.add(executor.submit(() -> {
+                tasks.add(() -> {
                     Path absolutePath = base.resolve(path);
                     CharStream cs;
+                    String fileText;
                     try {
-                        cs = CharStreams.fromPath(absolutePath);
+                        fileText = Files.readString(absolutePath);
                     } catch (IOException e) {
                         throw new EccoException("Failed to read file: " + absolutePath, e);
                     }
+                    cs = CharStreams.fromString(fileText);
                     ParseTree tree = createParseTree(cs);
-
-                    String fileText = cs.toString();
                     String[] lines = fileText.split("\n", -1);
                     Node.Op pluginNode = addPluginNode(nodes, path);
                     RustEccoVisitor translator = new RustEccoVisitor(pluginNode, lines, this.entityFactory, path, configuration);
                     translator.translate(tree);
-                }));
-            }
+                    return null;
+                });
         }
-        // wait for all tasks to finish
-        for (Future<?> f : futures) {
-            try {
-                f.get();
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                throw new EccoException("Parsing interrupted", e);
-            } catch (ExecutionException e) {
-                throw new EccoException("Failed to parse file", e);
+        try (ExecutorService executor = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors())) {
+            List<Future<Void>> futures = executor.invokeAll(tasks);
+            // wait for all tasks to finish
+            for (Future<?> f : futures) {
+                try {
+                    f.get();
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    throw new EccoException("Parsing interrupted", e);
+                } catch (ExecutionException e) {
+                    throw new EccoException("Failed to parse file", e);
+                }
             }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new EccoException("Parsing interrupted", e);
         }
 
         return nodes;
