@@ -28,7 +28,7 @@ class ExtractorTest {
             files.filter(Files::isRegularFile).forEach(featureFile -> {
                 String featureFileName = featureFile.getFileName().toString();
                 String lastFolder = input.getFileName().toString();
-                Path output = Paths.get("src/test/resources/extractor/output").resolve(lastFolder + featureFileName.replace(".csvconf", ""));
+                Path output = Paths.get("src/test/resources/extractor/output").resolve(lastFolder + "-" + featureFileName.replace(".csvconf", ""));
                 Set<String> features = getFeaturesFromFile(input, featureFile);
                 Extractor extractor = new Extractor(features, Paths.get("."));
                 extractor.extractFromDirectory(input, output);
@@ -107,9 +107,9 @@ class ExtractorTest {
         Collection<DynamicTest> tests = new java.util.ArrayList<>();
         int i = 0;
         while (i < files.size()) {
-            Path commit1 = outputBase.resolve(files.get(i));
-            Path commit2 = outputBase.resolve(files.get((i + 1) % files.size()));
-            Path checkout = outputBase.resolve(files.get((i + 2) % files.size()));
+            Path checkout = outputBase.resolve(files.get(i));
+            Path commit1 = outputBase.resolve(files.get((i + 1) % files.size()));
+            Path commit2 = outputBase.resolve(files.get((i + 2) % files.size()));
             i++;
             DynamicTest dynamicTest = DynamicTest.dynamicTest("Commit " + commit1.getFileName() + " and " + commit2.getFileName() + " checkout " + checkout.getFileName(), () -> {
                 Files.createDirectories(testDir);
@@ -118,15 +118,15 @@ class ExtractorTest {
                 Path baseDir = testDir.resolve("commit_" + commit1.getFileName() + "_" + commit2.getFileName() + "_checkout_" + checkout.getFileName());
                 Files.createDirectories(baseDir);
                 try (EccoService service = setupEccoService(baseDir)) {
+                    String configuration = service.getConfigStringFromFile(checkout);
                     // Commit two variants
                     service.setBaseDir(commit1);
                     service.commit("commited" + commit1.getFileName());
                     service.setBaseDir(commit2);
                     service.commit("commited" + commit2.getFileName());
-
                     Path checkoutDir = Files.createDirectories(baseDir.resolve("checkout"));
                     service.setBaseDir(checkoutDir);
-                    service.checkout(service.getConfigStringFromFile(checkout.resolve(".config")));
+                    service.checkout(configuration);
                     // Verify files
                     assertFoldersEqual(checkout, checkoutDir);
                 }
