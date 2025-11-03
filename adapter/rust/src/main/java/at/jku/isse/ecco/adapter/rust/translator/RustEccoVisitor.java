@@ -240,8 +240,9 @@ public class RustEccoVisitor extends RustParserBaseVisitor<Node.Op> {
             condition = configVisitor.visitCfgAttribute(attrCtx);
         }
 
-        Artifact.Op<AttributeArtifactData> item = this.entityFactory.createArtifact(new AttributeArtifactData(getString(ctx)));
+        Artifact.Op<AttributeArtifactData> item = this.entityFactory.createArtifact(new AttributeArtifactData());
         Node.Op node = createArtifactOrderedNodeAndAddToParent(item, this.nodeStack.peek());
+        this.addLineNodesFromContext(node, ctx);
         // Store condition in node to use it in parent item
         if (attrCtx != null) node.putProperty("condition", condition.toString());
         return node;
