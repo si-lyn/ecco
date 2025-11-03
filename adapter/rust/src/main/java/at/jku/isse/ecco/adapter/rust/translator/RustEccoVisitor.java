@@ -63,7 +63,7 @@ public class RustEccoVisitor extends RustParserBaseVisitor<Node.Op> {
     public Node.Op visitVisibility(RustParser.VisibilityContext ctx) {
         //create line artifacts for visibility
         //does not create LineNodes because writing pub is handled by RustWriter
-        Artifact.Op<VisibilityArtifactData> line = this.entityFactory.createArtifact(new VisibilityArtifactData());
+        Artifact.Op<VisibilityArtifactData> line = this.entityFactory.createArtifact(new VisibilityArtifactData(getString(ctx)));
         createArtifactOrderedNodeAndAddToParent(line, nodeStack.peek());
         return null;
     }
@@ -250,8 +250,10 @@ public class RustEccoVisitor extends RustParserBaseVisitor<Node.Op> {
 
     @Override
     public Node.Op visitInnerAttribute(RustParser.InnerAttributeContext ctx) {
-        Artifact.Op<InnerAttributeArtifactData> artifact = this.entityFactory.createArtifact(new InnerAttributeArtifactData(getString(ctx)));
-        return createArtifactOrderedNodeAndAddToParent(artifact, this.nodeStack.peek());
+        Artifact.Op<InnerAttributeArtifactData> artifact = this.entityFactory.createArtifact(new InnerAttributeArtifactData());
+        Node.Op node = createArtifactOrderedNodeAndAddToParent(artifact, this.nodeStack.peek());
+        this.addLineNodesFromContext(node, ctx);
+        return node;
     }
 
     @Override
