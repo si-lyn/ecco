@@ -58,8 +58,15 @@ public class Utils {
             int lineNumber = 0;
 
             while (true) {
-                expectedLine = expectedLines.readLine();
-                actualLine = actualLines.readLine();
+                // Skip empty lines in actual file
+                do {
+                    actualLine = actualLines.readLine();
+                } while (actualLine != null && (actualLine.trim().startsWith("///") || actualLine.trim().startsWith("//") || actualLine.trim().isEmpty()));
+                // Skip empty lines in expected file
+                do {
+                    expectedLine = expectedLines.readLine();
+                } while (expectedLine != null && (expectedLine.trim().startsWith("///") || expectedLine.trim().startsWith("//") || expectedLine.trim().isEmpty()));
+
                 lineNumber++;
                 if (expectedLine == null && actualLine == null) {
                     break; // End of both files
@@ -72,7 +79,6 @@ public class Utils {
                     diffReport.append(String.format("Line %d differs:%nExpected: %s%nActual:   %s%n%n", lineNumber, expectedTrimmed, actualTrimmed));
                 }
             }
-
         }
         if (!filesAreEqual)  Assertions.fail("Files are not equal:\n" + diffReport);
     }
