@@ -59,7 +59,7 @@ public class RustWriter implements ArtifactWriter<Set<Node>, Path> {
     private void writeRustFile(Path filePath, Node orderedNode){
         List<? extends Node> fileNodeChildren = orderedNode.getChildren();
         if (fileNodeChildren == null) {
-            throw new EccoException("File node has no children.");
+            throw new EccoException("File node has no children:" + orderedNode.toString() + " for file path: " + filePath);
         }
         if (fileNodeChildren.isEmpty()) {
             return; // Nothing to write
