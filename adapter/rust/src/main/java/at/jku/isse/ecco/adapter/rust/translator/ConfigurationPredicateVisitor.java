@@ -1,15 +1,23 @@
 package at.jku.isse.ecco.adapter.rust.translator;
 
+import at.jku.isse.ecco.adapter.rust.antlr.RustParser;
+import at.jku.isse.ecco.adapter.rust.antlr.RustParserBaseVisitor;
+import at.jku.isse.ecco.logic.FormulaFactoryProvider;
 import org.logicng.formulas.Formula;
 import org.logicng.formulas.FormulaFactory;
-import simon.lyn.antlr.RustParser;
-import simon.lyn.antlr.RustParserBaseVisitor;
 
 public class ConfigurationPredicateVisitor extends RustParserBaseVisitor<Formula> {
     private final FormulaFactory f = FormulaFactoryProvider.getFormulaFactory();
 
+    // Handle cfg attributes like #[cfg(default)]
     @Override
     public Formula visitCfgAttribute(RustParser.CfgAttributeContext ctx) {
+        return visit(ctx.configurationPredicate());
+    }
+
+    // Handle cfg attributes like #[cfg_attr(feature = "foo", default)]
+    @Override
+    public Formula visitCfgAttrAttribute(RustParser.CfgAttrAttributeContext ctx) {
         return visit(ctx.configurationPredicate());
     }
 

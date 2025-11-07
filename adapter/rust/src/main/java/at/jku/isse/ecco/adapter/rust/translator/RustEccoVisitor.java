@@ -5,7 +5,6 @@ import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.adapter.rust.antlr.RustParser;
 import at.jku.isse.ecco.adapter.rust.antlr.RustParserBaseVisitor;
 import at.jku.isse.ecco.adapter.rust.data.*;
-import at.jku.isse.ecco.adapter.rust.extractor.ConfigurationPredicateVisitor;
 import at.jku.isse.ecco.artifact.Artifact;
 import at.jku.isse.ecco.artifact.ArtifactData;
 import at.jku.isse.ecco.dao.EntityFactory;
@@ -75,15 +74,13 @@ public class RustEccoVisitor extends RustParserBaseVisitor<Node.Op> {
         if (ctx.KW_UNSAFE() != null) {
             sig.append("unsafe ");
         }
-        sig.append("mod ")
-                .append(getString(ctx.identifier()))
-                .append(" ");
+        sig.append("mod ").append(getString(ctx.identifier()));
         if (ctx.SEMI() != null) {
             // module is just a declaration
             sig.append(";");
         } else {
             //module contains something
-            sig.append("{");
+            sig.append(" {");
         }
         Artifact.Op<ModuleArtifactData> moduleArtifact = this.entityFactory.createArtifact(new ModuleArtifactData(sig.toString()));
         Node.Op moduleNode = createArtifactOrderedNodeAndAddToParent(moduleArtifact, nodeStack.peek());
@@ -105,7 +102,6 @@ public class RustEccoVisitor extends RustParserBaseVisitor<Node.Op> {
         if (ctx.macroItem() == null && ctx.visItem() == null) {
             return null;
         }
-
         Artifact.Op<ItemArtifactData> item = this.entityFactory.createArtifact(new ItemArtifactData());
         Node.Op itemNode = createArtifactOrderedNodeAndAddToParent(item, nodeStack.peek());
         nodeStack.push(itemNode);
@@ -233,18 +229,26 @@ public class RustEccoVisitor extends RustParserBaseVisitor<Node.Op> {
         if (ctx.docComment() != null) return visitDocComment(ctx.docComment());
 
         // Visit cfg attribute and convert to condition(formula)
-        Formula condition = null;
-        RustParser.CfgAttributeContext attrCtx = ctx.attr().cfgAttribute();
-        if (attrCtx != null) {
+        Optional<Formula> condition = Optional.empty();
+        final RustParser.AttrContext attr = ctx.attr();
+        if (attr != null ) {
+            RustParser.CfgAttributeContext attrCtx = attr.cfgAttribute();
+            RustParser.CfgAttrAttributeContext cfgAttrCtx = attr.cfgAttrAttribute();
             ConfigurationPredicateVisitor configVisitor = new ConfigurationPredicateVisitor();
-            condition = configVisitor.visitCfgAttribute(attrCtx);
+            if (attrCtx != null) {
+                // outer attribute has a cfg like: ![cfg(...)]
+                condition = Optional.of(configVisitor.visitCfgAttribute(attrCtx));
+            } else if (cfgAttrCtx != null) {
+                // outer attribute has a cfg_attr like: ![cfg_attr(...)]
+                condition = Optional.of(configVisitor.visitCfgAttrAttribute(cfgAttrCtx));
+            }
         }
 
-        Artifact.Op<AttributeArtifactData> item = this.entityFactory.createArtifact(new AttributeArtifactData());
+        Artifact.Op<AttributeArtifactData> item = this.entityFactory.createArtifact(new AttributeArtifactData(ctx.getText()));
         Node.Op node = createArtifactOrderedNodeAndAddToParent(item, this.nodeStack.peek());
         this.addLineNodesFromContext(node, ctx);
         // Store condition in node to use it in parent item
-        if (attrCtx != null) node.putProperty("condition", condition.toString());
+        condition.map(Formula::toString).ifPresent(s -> node.putProperty("condition", s));
         return node;
     }
 
@@ -285,12 +289,10 @@ public class RustEccoVisitor extends RustParserBaseVisitor<Node.Op> {
     public Node.Op visitEnumeration(RustParser.EnumerationContext ctx) {
         Artifact.Op<EnumArtifactData> item = this.entityFactory.createArtifact(new EnumArtifactData());
         Node.Op node = createArtifactOrderedNodeAndAddToParent(item, this.nodeStack.peek());
-
         // Inside visitEnumeration
         int enumStartLine = ctx.getStart().getLine();
         int enumStartPos = ctx.getStart().getCharPositionInLine();
         int enumEndLine = ctx.getStop().getLine();
-        int enumEndPos = ctx.getStop().getCharPositionInLine() + ctx.getStop().getText().length();
 
         if (ctx.enumItems() == null) {
             // No enum items, add all lines of the enum
