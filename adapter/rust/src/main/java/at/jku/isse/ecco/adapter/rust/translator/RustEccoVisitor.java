@@ -26,6 +26,7 @@ public class RustEccoVisitor extends RustParserBaseVisitor<Node.Op> {
     private final EntityFactory entityFactory;
     private final Path path;
     private final String configuration;
+    private static final String CONDITION_PROPERTY = "condition";
 
     public RustEccoVisitor(Node.Op pluginNode, String[] codeLines, EntityFactory entityFactory, Path path, String configuration) {
         this.pluginNode = pluginNode;
@@ -110,7 +111,7 @@ public class RustEccoVisitor extends RustParserBaseVisitor<Node.Op> {
         // Item can have multiple outer attributes, so we look for conditions in all of them
         List<String> conditions = ctx.outerAttribute().stream()
                 .map(attrCtx -> attrCtx.accept(this))
-                .map(node -> node.getProperty("condition"))
+                .map(node -> node.getProperty(CONDITION_PROPERTY))
                 .flatMap(Optional::stream)
                 .map(Object::toString)
                 .toList();
@@ -173,8 +174,8 @@ public class RustEccoVisitor extends RustParserBaseVisitor<Node.Op> {
         List<String> conditions = new ArrayList<>();
         // Look through all the outer Attributes that has been added as children to the temp node and collect their conditions
         node.getChildren().forEach(child -> {
-            if (child.getProperty("condition").isPresent()) {
-                String property = child.getProperty("condition").get().toString();
+            if (child.getProperty(CONDITION_PROPERTY).isPresent()) {
+                String property = child.getProperty(CONDITION_PROPERTY).get().toString();
                 conditions.add(property);
             }
         });
@@ -183,7 +184,7 @@ public class RustEccoVisitor extends RustParserBaseVisitor<Node.Op> {
             String condition = String.join(" & ", conditions);
             Node.Op peekNode = this.nodeStack.peek();
             FeatureTrace nodeTrace = peekNode.getFeatureTrace();
-            nodeTrace.buildProactiveConditionConjunction(condition.toString());
+            nodeTrace.buildProactiveConditionConjunction(condition);
         }
         return nodeStack.peek();
     }
@@ -267,7 +268,7 @@ public class RustEccoVisitor extends RustParserBaseVisitor<Node.Op> {
         Node.Op node = createArtifactOrderedNodeAndAddToParent(item, this.nodeStack.peek());
         this.addLineNodesFromContext(node, ctx);
         // Store condition in node to use it in parent item
-        condition.map(Formula::toString).ifPresent(s -> node.putProperty("condition", s));
+        condition.map(Formula::toString).ifPresent(s -> node.putProperty(CONDITION_PROPERTY, s));
         return node;
     }
 
@@ -369,11 +370,6 @@ public class RustEccoVisitor extends RustParserBaseVisitor<Node.Op> {
         this.addLineNodesFromContext(node, ctx);
 
         return node;
-    }
-
-    @Override
-    public Node.Op visitMatchArm(RustParser.MatchArmContext ctx) {
-        return super.visitMatchArm(ctx);
     }
 
     /** Get the function signature as a string from the given Function_Context
