@@ -163,11 +163,30 @@ public class RustEccoVisitor extends RustParserBaseVisitor<Node.Op> {
     public Node.Op visitStatements(RustParser.StatementsContext ctx) {
         this.addLineNodesFromContext(nodeStack.peek(), ctx);
 
-        // when super.visitStatements comes to a macro the tree looks like statement -> item -> macroItem(thus adding a item artifact)
-        // which means going deeper in parseTree not needed here
+        // Here we create temp ordered node to collect conditions from outer Attributes inside statements.
+        Node.Op node = this.entityFactory.createOrderedNode(new ArtifactData() {});
+        this.nodeStack.push(node);
+        for (RustParser.StatementContext statementContext : ctx.statement()) {
+            statementContext.accept(this);
+        }
+        this.nodeStack.pop();
+        List<String> conditions = new ArrayList<>();
+        // Look through all the outer Attributes that has been added as children to the temp node and collect their conditions
+        node.getChildren().forEach(child -> {
+            if (child.getProperty("condition").isPresent()) {
+                String property = child.getProperty("condition").get().toString();
+                conditions.add(property);
+            }
+        });
+        // Create proactiveConditionConjunction from all conditions found in statements
+        if (!conditions.isEmpty()) {
+            String condition = String.join(" & ", conditions);
+            Node.Op peekNode = this.nodeStack.peek();
+            FeatureTrace nodeTrace = peekNode.getFeatureTrace();
+            nodeTrace.buildProactiveConditionConjunction(condition.toString());
+        }
         return nodeStack.peek();
     }
-
     @Override
     public Node.Op visitBlockExpression(RustParser.BlockExpressionContext ctx) {
         Artifact.Op<BlockArtifactData> item = this.entityFactory.createArtifact(new BlockArtifactData());
@@ -350,7 +369,11 @@ public class RustEccoVisitor extends RustParserBaseVisitor<Node.Op> {
         this.addLineNodesFromContext(node, ctx);
 
         return node;
+    }
 
+    @Override
+    public Node.Op visitMatchArm(RustParser.MatchArmContext ctx) {
+        return super.visitMatchArm(ctx);
     }
 
     /** Get the function signature as a string from the given Function_Context
