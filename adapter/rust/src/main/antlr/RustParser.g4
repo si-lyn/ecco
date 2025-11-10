@@ -442,7 +442,12 @@ associatedItem
 // 7
 innerAttribute
     : POUND NOT LSQUAREBRACKET attr RSQUAREBRACKET
-    | docComment
+    | innerAttributeComment
+    ;
+
+innerAttributeComment
+    : INNER_LINE_DOC
+    | INNER_BLOCK_DOC
     ;
 
 outerAttribute
