@@ -10,6 +10,7 @@ struct Args {
 #[command(rename_all = "lowercase")]
 enum Commands {
     /// Create a new user with a password
+    #[cfg(feature = "create")]
     Create {
         /// The username for the new user
         #[arg(short, long)]
@@ -19,6 +20,7 @@ enum Commands {
         password: String,
     },
     /// Retrieve the password for a user
+    #[cfg(feature = "get")]
     Get {
         /// The username whose password will be retrieved
         #[arg(short, long)]
@@ -26,11 +28,10 @@ enum Commands {
     },
 }
 /// Creates a new user file and writes the provided password to it.
-///
 /// # Arguments
-///
 /// * `user` - The username for which the file will be created.
 /// * `password` - The password to store in the user's file
+#[cfg(all(feature = "create", feature = "file_storage"))]
 fn create_user(user: &str, password: &str) -> Result<(), std::io::Error> {
     println!("Creating user: {} with password: {}", user, password);
     let mut file = std::fs::File::create(format!("{}.txt", user))?;
@@ -38,14 +39,11 @@ fn create_user(user: &str, password: &str) -> Result<(), std::io::Error> {
     Ok(())
 }
 /// Retrieves the password for a given user from their file, if it exists.
-///
 /// # Arguments
-///
 /// * `user` - The username whose password will be retrieved.
-///
 /// # Returns
-///
 /// * `Option<String>` - The password if the file exists, or `None` if not found.
+#[cfg(all(feature = "get", feature = "file_storage"))]
 fn get_user_password(user: &str) -> Option<String> {
     let file_path = format!("{}.txt", user);
     if std::path::Path::new(&file_path).exists() {
@@ -56,6 +54,7 @@ fn get_user_password(user: &str) -> Option<String> {
 }
 fn run_app(args: Args) {
     match args.cmd {
+        #[cfg(feature = "create")]
         Commands::Create { user, password } => {
             if let Err(e) = create_user(&user, &password) {
                 println!("Error creating user: {}", e);
@@ -63,6 +62,7 @@ fn run_app(args: Args) {
                 println!("User {} created successfully.", user);
             }
         }
+        #[cfg(feature = "get")]
         Commands::Get { user } => match get_user_password(&user) {
             Some(password) => println!("Password for {}: {}", user, password),
             _ => println!("No password found for user: {}", user),
@@ -78,6 +78,7 @@ mod tests {
 use super::*;
 use std::fs;
 #[test]
+#[cfg(all(feature = "create", feature = "file_storage", feature = "get"))]
 fn test_create_user_and_get_password() {
     let user = "testuser";
     let password = "testpassword";
@@ -93,6 +94,7 @@ fn test_create_user_and_get_password() {
     let _ = fs::remove_file(format!("{}.txt", user));
 }
 #[test]
+#[cfg(all(feature = "create", feature = "file_storage", feature = "get"))]
 fn test_get_user_password_nonexistent() {
     let user = "nonexistentuser";
     let retrieved = get_user_password(user);

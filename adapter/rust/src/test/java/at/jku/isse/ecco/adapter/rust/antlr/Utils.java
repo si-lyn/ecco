@@ -7,10 +7,7 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
-import java.util.Objects;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -48,6 +45,7 @@ public class Utils {
         if (!Files.exists(excepted)) throw new IllegalArgumentException("File does not exist: " + excepted);
         if (!Files.exists(actual)) throw new IllegalArgumentException("File does not exist: " + actual);
 
+        Assertions.assertNotEquals(0, Files.size(actual), "Expected file is empty: " + actual);
         StringBuilder diffReport = new StringBuilder();
         boolean filesAreEqual = true;
 
@@ -80,7 +78,9 @@ public class Utils {
                 }
             }
         }
-        if (!filesAreEqual)  Assertions.fail("Files are not equal:\n" + diffReport);
+        if (!filesAreEqual) {
+            Assertions.fail("File at Path" + actual + " has failed: \n" + diffReport);
+        }
     }
 
     public static void deleteDirectoryRecursively(Path path) throws IOException {
@@ -107,34 +107,5 @@ public class Utils {
             System.out.println("Exception during ECCO setup: " + e.getMessage());
         }
         return service;
-    }
-
-    /**
-     * Returns all unordered combinations of size 3 from the provided list.
-     *
-     * @param <T>  element type
-     * @param items input list
-     * @return list of combinations; each combination is a List<T> of size 3
-     * @throws NullPointerException if items is null
-     */
-    public static <T> List<List<T>> combinationsOfThree(List<T> items) {
-        Objects.requireNonNull(items, "items must not be null");
-        int n = items.size();
-        if (n < 3) {
-            return Collections.emptyList();
-        }
-        List<List<T>> result = new ArrayList<>((n * (n - 1) * (n - 2)) / 6);
-        for (int i = 0; i < n - 2; i++) {
-            for (int j = i + 1; j < n - 1; j++) {
-                for (int k = j + 1; k < n; k++) {
-                    List<T> combo = new ArrayList<>(3);
-                    combo.add(items.get(i));
-                    combo.add(items.get(j));
-                    combo.add(items.get(k));
-                    result.add(combo);
-                }
-            }
-        }
-        return result;
     }
 }

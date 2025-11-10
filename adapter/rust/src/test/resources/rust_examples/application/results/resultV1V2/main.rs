@@ -10,6 +10,7 @@ struct Args {
 #[command(rename_all = "lowercase")]
 enum Commands {
     /// Create a new user with a password
+    #[cfg(feature = "create")]
     Create {
         /// The username for the new user
         #[arg(short, long)]
@@ -19,8 +20,10 @@ enum Commands {
         password: String,
     },
     /// Get all users
+    #[cfg(feature = "get_all")]
     GetAll,
     /// Retrieve the password for a user
+    #[cfg(feature = "get")]
     Get {
         /// The username whose password will be retrieved
         #[arg(short, long)]
@@ -28,29 +31,25 @@ enum Commands {
     },
 }
 /// Creates a new user file and writes the provided password to it.
-///
 /// # Arguments
-///
 /// * `user` - The username for which the file will be created.
 /// * `password` - The password to store in the user's file
+#[cfg(all(feature = "create", feature = "file_storage"))]
 fn create_user(user: &str, password: &str) -> Result<(), std::io::Error> {
-    println!("Creating user: {} with password: {}", user, password);
+println!("Creating user: {} with password: {}", user, password);
     let mut file = std::fs::File::create(format!("{}.txt", user))?;
     file.write_all(password.as_bytes())?;
     Ok(())
 }
 /// Retrieves the password for a given user from their file, if it exists.
-///
 /// # Arguments
-///
 /// * `user` - The username whose password will be retrieved.
-///
 /// # Returns
-///
 /// Retrieves all users sorted
 /// * `Option<String>` - The password if the file exists, or `None` if not found.
+#[cfg(all(feature = "get_all", feature = "file_storage"))]
 fn get_all_users() -> Vec<String> {
-    let mut users = Vec::new();
+let mut users = Vec::new();
     let entries = match std::fs::read_dir(".") {
         Ok(entries) => entries,
         Err(_) => return users, // Return empty vec if directory can't be read
@@ -73,8 +72,9 @@ fn get_all_users() -> Vec<String> {
     users.sort();
     users
 }
+#[cfg(all(feature = "get", feature = "file_storage"))]
 fn get_user_password(user: &str) -> Option<String> {
-    let file_path = format!("{}.txt", user);
+let file_path = format!("{}.txt", user);
     if std::path::Path::new(&file_path).exists() {
         let content = std::fs::read_to_string(file_path).expect("Unable to read file");
         return Some(content);
@@ -82,7 +82,8 @@ fn get_user_password(user: &str) -> Option<String> {
     None
 }
 fn run_app(args: Args) {
-    match args.cmd {
+match args.cmd {
+        #[cfg(feature = "create")]
         Commands::Create { user, password } => {
             if let Err(e) = create_user(&user, &password) {
                 println!("Error creating user: {}", e);
@@ -90,6 +91,7 @@ fn run_app(args: Args) {
                 println!("User {} created successfully.", user);
             }
         }
+        #[cfg(feature = "get_all")]
         Commands::GetAll => {
             let users = get_all_users();
             if users.is_empty() {
@@ -101,6 +103,7 @@ fn run_app(args: Args) {
                 }
             }
         }
+        #[cfg(feature = "get")]
         Commands::Get { user } => match get_user_password(&user) {
             Some(password) => println!("Password for {}: {}", user, password),
             _ => println!("No password found for user: {}", user),
@@ -108,7 +111,7 @@ fn run_app(args: Args) {
     }
 }
 fn main() {
-    let args = Args::parse();
+let args = Args::parse();
     run_app(args);
 }
 #[cfg(test)]
@@ -116,8 +119,24 @@ mod tests {
 use super::*;
 use std::fs;
 #[test]
+#[cfg(all(feature = "create", feature = "file_storage"))]
+fn test_create_user() {
+let user = "testuser";
+    let password = "testpassword";
+    // Clean up before test
+    let _ = fs::remove_file(format!("{}.txt", user));
+    // Create user
+    let result = create_user(user, password);
+    assert!(result.is_ok());
+    // Verify file content
+    let content = fs::read_to_string(format!("{}.txt", user)).expect("Unable to read file");
+    assert_eq!(content, password);
+    // Clean up after test
+    let _ = fs::remove_file(format!("{}.txt", user));
+}
+#[cfg(all(feature = "create", feature = "file_storage", feature = "get"))]
 fn test_create_user_and_get_password() {
-    let user = "testuser";
+let user = "testuser";
     let password = "testpassword";
     // Clean up before test
     let _ = fs::remove_file(format!("{}.txt", user));
@@ -131,8 +150,9 @@ fn test_create_user_and_get_password() {
     let _ = fs::remove_file(format!("{}.txt", user));
 }
 #[test]
+#[cfg(all(feature = "get_all", feature = "file_storage"))]
 fn test_get_all_users() {
-    let users = ["user1", "user2", "user3"];
+let users = ["user1", "user2", "user3"];
     let password = "testpass";
     // Create test users
     for user in &users {
@@ -149,8 +169,10 @@ fn test_get_all_users() {
         let _ = fs::remove_file(format!("{}.txt", user));
     }
 }
+#[test]
+#[cfg(all(feature = "create", feature = "file_storage", feature = "get"))]
 fn test_get_user_password_nonexistent() {
-    let user = "nonexistentuser";
+let user = "nonexistentuser";
     let retrieved = get_user_password(user);
     assert_eq!(retrieved, None);
 }

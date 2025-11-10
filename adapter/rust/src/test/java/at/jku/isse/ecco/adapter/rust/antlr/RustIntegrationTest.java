@@ -1,9 +1,7 @@
 package at.jku.isse.ecco.adapter.rust.antlr;
 
 import at.jku.isse.ecco.service.EccoService;
-import at.jku.isse.ecco.storage.ser.dao.SerEntityFactory;
 import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -11,8 +9,6 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.List;
-import java.util.stream.Stream;
 
 import static at.jku.isse.ecco.adapter.rust.antlr.Utils.assertFilesEqual;
 import static at.jku.isse.ecco.adapter.rust.antlr.Utils.deleteDirectoryRecursively;
@@ -73,12 +69,18 @@ class RustIntegrationTest {
     @Test
     void functionWithOuterAttribute() throws Exception {
         String[] folders = { "v1", "v2"};
-        String testFolderStr = "src/test/resources/rust_examples/functionTest/";
-        commit(folders, testFolderStr, service);
+        Path base = Paths.get("src/test/resources/rust_examples/functionTest/");
+        commit(folders, base.toString(), service);
+
+        Path actualFile = base.resolve("actual/main.rs");
+        deleteDirectoryRecursively(base.resolve("actual"));
+        Files.createDirectories(base.resolve("actual"));
+
+        service.setBaseDir(base.resolve("actual").toAbsolutePath());
         service.checkout("hello.1,farewell.1");
-        Path actual = Paths.get("src/test/resources/rust_examples/functionTest/result/main.rs");
-        Path testOutput = Paths.get("src/test/resources/rust_examples/test_output/main.rs");
-        assertFilesEqual(actual, testOutput);
+
+        Path expectedFile = base.resolve("expected/main.rs");
+        assertFilesEqual(expectedFile, actualFile);
     }
 
     @Test
@@ -132,7 +134,7 @@ class RustIntegrationTest {
         String testFolderStr = "src/test/resources/rust_examples/application/";
         commit(folders, testFolderStr, service);
 
-        service.checkout("create.1,get.1,getAll.1,base.1");
+        service.checkout("base.1,create.1,get.1,getAll.1");
         Path actual = Paths.get("src/test/resources/rust_examples/application/results/resultV1V2/main.rs");
         Path testOutput = Paths.get("src/test/resources/rust_examples/test_output/main.rs");
         assertFilesEqual(actual, testOutput);
@@ -149,6 +151,22 @@ class RustIntegrationTest {
         Path testOutput = Paths.get("src/test/resources/rust_examples/test_output/main.rs");
         assertFilesEqual(actual, testOutput);
     }
+
+    // Test for commiting a windows logger and a unix logger, and then extract the shared logic
+    @Test
+    void loggerTest() throws  Exception {
+        Path testLocation = Paths.get("src/test/resources/rust_examples/trait-imp-test/");
+        String[] folders = { "windows", "unix"};
+        String testFolderStr = "src/test/resources/rust_examples/trait-imp-test/";
+        commit(folders, testFolderStr, service);
+        service.setBaseDir(testLocation.resolve("actual"));
+        Files.deleteIfExists(testLocation.resolve("actual/main.rs"));
+        service.checkout("base.1, unix_logger.1, windows_logger.1");
+        Path actual = testLocation.resolve("actual/main.rs");
+        Path testOutput = testLocation.resolve("expected/main.rs");
+        assertFilesEqual(actual, testOutput);
+    }
+
 
     private void commit(String[] folders, String testFolderStr, EccoService service) {
         Path testFolder = Paths.get(testFolderStr);
