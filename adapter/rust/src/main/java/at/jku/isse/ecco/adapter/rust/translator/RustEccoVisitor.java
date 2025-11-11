@@ -164,30 +164,11 @@ public class RustEccoVisitor extends RustParserBaseVisitor<Node.Op> {
     public Node.Op visitStatements(RustParser.StatementsContext ctx) {
         this.addLineNodesFromContext(nodeStack.peek(), ctx);
 
-        // Here we create temp ordered node to collect conditions from outer Attributes inside statements.
-        Node.Op node = this.entityFactory.createOrderedNode(new ArtifactData() {});
-        this.nodeStack.push(node);
-        for (RustParser.StatementContext statementContext : ctx.statement()) {
-            statementContext.accept(this);
-        }
-        this.nodeStack.pop();
-        List<String> conditions = new ArrayList<>();
-        // Look through all the outer Attributes that has been added as children to the temp node and collect their conditions
-        node.getChildren().forEach(child -> {
-            if (child.getProperty(CONDITION_PROPERTY).isPresent()) {
-                String property = child.getProperty(CONDITION_PROPERTY).get().toString();
-                conditions.add(property);
-            }
-        });
-        // Create proactiveConditionConjunction from all conditions found in statements
-        if (!conditions.isEmpty()) {
-            String condition = String.join(" & ", conditions);
-            Node.Op peekNode = this.nodeStack.peek();
-            FeatureTrace nodeTrace = peekNode.getFeatureTrace();
-            nodeTrace.buildProactiveConditionConjunction(condition);
-        }
+        // when super.visitStatements comes to a macro the tree looks like statement -> item -> macroItem(thus adding a item artifact)
+        // which means going deeper in parseTree not needed here
         return nodeStack.peek();
     }
+
     @Override
     public Node.Op visitBlockExpression(RustParser.BlockExpressionContext ctx) {
         Artifact.Op<BlockArtifactData> item = this.entityFactory.createArtifact(new BlockArtifactData());
