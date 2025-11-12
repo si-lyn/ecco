@@ -155,14 +155,19 @@ class RustIntegrationTest {
     // Test for commiting a windows logger and a unix logger, and then extract the shared logic
     @Test
     void loggerTest() throws  Exception {
-        Path testLocation = Paths.get("src/test/resources/rust_examples/trait-imp-test/");
+        Path testLocation = Paths.get("src/test/resources/rust_examples/trait-imp-test/").toAbsolutePath();
         String[] folders = { "windows", "unix"};
         String testFolderStr = "src/test/resources/rust_examples/trait-imp-test/";
         commit(folders, testFolderStr, service);
+
+        Path actualDir = testLocation.resolve("actual");
+        deleteDirectoryRecursively(actualDir);
+        Files.createDirectories(actualDir);
+
         service.setBaseDir(testLocation.resolve("actual"));
-        Files.deleteIfExists(testLocation.resolve("actual/main.rs"));
-        service.checkout("base.1, unix_logger.1, windows_logger.1");
-        Path actual = testLocation.resolve("actual/main.rs");
+        Files.deleteIfExists(actualDir.resolve("main.rs"));
+        service.checkout("unix_logger.1, windows_logger.1");
+        Path actual = actualDir.resolve("main.rs");
         Path testOutput = testLocation.resolve("expected/main.rs");
         assertFilesEqual(actual, testOutput);
     }
