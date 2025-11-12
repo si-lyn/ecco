@@ -58,7 +58,6 @@ public class RustEccoVisitor extends RustParserBaseVisitor<Node.Op> {
         return this.pluginNode;
     }
 
-
     @Override
     public Node.Op visitVisibility(RustParser.VisibilityContext ctx) {
         //create line artifacts for visibility
@@ -151,7 +150,6 @@ public class RustEccoVisitor extends RustParserBaseVisitor<Node.Op> {
         return node;
     }
 
-
     @Override
     public Node.Op visitDocComment(RustParser.DocCommentContext ctx) {
         Artifact.Op<DocArtifactData> doc = this.entityFactory.createArtifact(new DocArtifactData());
@@ -174,18 +172,20 @@ public class RustEccoVisitor extends RustParserBaseVisitor<Node.Op> {
         Artifact.Op<BlockArtifactData> item = this.entityFactory.createArtifact(new BlockArtifactData());
         // node is ordered so the nodes are in sequence
         Node.Op blockNode = createArtifactOrderedNodeAndAddToParent(item, this.nodeStack.peek());
-        if (ctx.LCURLYBRACE() != null) {
-            Artifact.Op<LineArtifactData> line = this.entityFactory.createArtifact(new LineArtifactData("{"));
-            blockNode.addChild(this.entityFactory.createOrderedNode(line));
-        }
-        this.nodeStack.push(blockNode);
-        Node.Op visited = super.visitBlockExpression(ctx);
-        nodeStack.pop();
-        if (ctx.RCURLYBRACE() != null) {
-            Artifact.Op<LineArtifactData> line = this.entityFactory.createArtifact(new LineArtifactData("}"));
-            blockNode.addChild(this.entityFactory.createOrderedNode(line));
-        }
-        return visited;
+        this.addLineNodesFromContext(blockNode, ctx);
+        return blockNode;
+//        if (ctx.LCURLYBRACE() != null) {
+//            Artifact.Op<LineArtifactData> line = this.entityFactory.createArtifact(new LineArtifactData("{"));
+//            blockNode.addChild(this.entityFactory.createOrderedNode(line));
+//        }
+//        this.nodeStack.push(blockNode);
+//        Node.Op visited = super.visitBlockExpression(ctx);
+//        nodeStack.pop();
+//        if (ctx.RCURLYBRACE() != null) {
+//            Artifact.Op<LineArtifactData> line = this.entityFactory.createArtifact(new LineArtifactData("}"));
+//            blockNode.addChild(this.entityFactory.createOrderedNode(line));
+//        }
+//        return visited;
     }
 
 
@@ -219,6 +219,22 @@ public class RustEccoVisitor extends RustParserBaseVisitor<Node.Op> {
     @Override
     public Node.Op visitTrait_(RustParser.Trait_Context ctx) {
         Artifact.Op<TraitArtifactData> item = this.entityFactory.createArtifact(new TraitArtifactData());
+        Node.Op node = createArtifactOrderedNodeAndAddToParent(item, this.nodeStack.peek());
+        this.addLineNodesFromContext(node, ctx);
+        return node;
+    }
+
+    @Override
+    public Node.Op visitExternCrate(RustParser.ExternCrateContext ctx) {
+        Artifact.Op<ExternCrateArtifactData> item = this.entityFactory.createArtifact(new ExternCrateArtifactData());
+        Node.Op node = createArtifactOrderedNodeAndAddToParent(item, this.nodeStack.peek());
+        this.addLineNodesFromContext(node, ctx);
+        return node;
+    }
+
+    @Override
+    public Node.Op visitStaticItem(RustParser.StaticItemContext ctx) {
+        Artifact.Op<StaticArtifactData> item = this.entityFactory.createArtifact(new StaticArtifactData());
         Node.Op node = createArtifactOrderedNodeAndAddToParent(item, this.nodeStack.peek());
         this.addLineNodesFromContext(node, ctx);
         return node;
@@ -281,7 +297,7 @@ public class RustEccoVisitor extends RustParserBaseVisitor<Node.Op> {
     @Override
     public Node.Op visitUseDeclaration(RustParser.UseDeclarationContext ctx) {
         Artifact.Op<UseDeclarationArtifactData> item = this.entityFactory.createArtifact(new UseDeclarationArtifactData());
-        Node.Op node = createArtifactNodeAndAddToParent(item, this.nodeStack.peek());
+        Node.Op node = createArtifactOrderedNodeAndAddToParent(item, this.nodeStack.peek());
         this.addLineNodesFromContext(node, ctx);
         return node;
     }
@@ -469,21 +485,6 @@ public class RustEccoVisitor extends RustParserBaseVisitor<Node.Op> {
         int stopPos = ctx.stop.getCharPositionInLine() + ctx.stop.getText().length();
 
         this.addLineNodes(parentNode, startLine, stopLine, startPos, stopPos);
-    }
-
-    /**
-     * unordered artifact must be uniquely identifiable just by their contained data object, as it is the only means of identification aside from their sequence number.
-     *  No two child artifacts can contain equal data objects.
-     * @param artifact
-     * @param parentNode
-     * @return <T extends ArtifactData>
-     * @param <T>
-     */
-    private <T extends ArtifactData> Node.Op createArtifactNodeAndAddToParent(Artifact.Op<T> artifact, Node.Op parentNode) {
-        Node.Op node = this.entityFactory.createNode(artifact);
-        assert parentNode != null;
-        parentNode.addChild(node);
-        return node;
     }
 
     /**
