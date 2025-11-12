@@ -6,10 +6,13 @@ import org.junit.jupiter.api.DynamicTest;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestFactory;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.stream.Stream;
 
@@ -117,6 +120,32 @@ class ExtractorTest {
         // Clean up test directory if it exists
         deleteDirectoryRecursively(testDir);
         return CommitAllPermutations(outputBase, testDir, 4);
+    }
+
+    @Test
+    void commitAllVariantsAndCheckoutAll() throws Exception {
+        final Path outputBase = Paths.get("src/test/resources/extractor/output");
+        final Path testDir = Paths.get("src/test/resources/extractor/commit_all_checkout_all").toAbsolutePath();
+        // Clean up test directory if it exists
+        deleteDirectoryRecursively(testDir);
+        Files.createDirectories(testDir);
+        List<String> files = getOutputFiles(outputBase);
+        Path eccoDir = Files.createDirectories(testDir.resolve("ecco_repo"));
+        try (EccoService service = new EccoService(eccoDir)) {
+            service.init();
+            Assertions.assertNotNull(service);
+            // Commit all variants
+            for (String folder : files) {
+                service.setBaseDir(outputBase.resolve(folder));
+                service.commit("commited" + folder);
+            }
+            // Checkout each variant and verify
+            for (String folder : files) {
+                Path checkoutLocation = Files.createDirectories(testDir.resolve("checkout_" + folder));
+                service.setBaseDir(checkoutLocation);
+                service.checkout(service.getConfigStringFromFile(outputBase.resolve(folder)));
+            }
+        }
     }
 
 
