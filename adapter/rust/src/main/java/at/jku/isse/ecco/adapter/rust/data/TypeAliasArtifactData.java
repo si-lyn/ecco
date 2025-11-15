@@ -17,6 +17,6 @@ public class TypeAliasArtifactData implements ArtifactData {
 
     @Override
     public String toString() {
-        return "TypeAliasArtifactData:";
+        return this.getClass().getSimpleName() + ":";
     }
 }

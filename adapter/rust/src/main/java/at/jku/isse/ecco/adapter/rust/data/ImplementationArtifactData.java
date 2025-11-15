@@ -1,11 +1,9 @@
 package at.jku.isse.ecco.adapter.rust.data;
 
 import at.jku.isse.ecco.artifact.ArtifactData;
-import lombok.Data;
 
 import java.util.Objects;
 
-@Data
 public class ImplementationArtifactData implements ArtifactData {
     @Override
     public boolean equals(Object o) {
@@ -15,5 +13,10 @@ public class ImplementationArtifactData implements ArtifactData {
     @Override
     public int hashCode() {
         return Objects.hash("");
+    }
+
+    @Override
+    public String toString() {
+        return this.getClass().getSimpleName() + ":";
     }
 }

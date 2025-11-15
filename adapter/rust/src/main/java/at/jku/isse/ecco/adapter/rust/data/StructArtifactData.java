@@ -17,6 +17,6 @@ public class StructArtifactData implements ArtifactData {
 
     @Override
     public String toString() {
-        return "StructArtifactData:";
+        return this.getClass().getSimpleName() + ":";
     }
 }

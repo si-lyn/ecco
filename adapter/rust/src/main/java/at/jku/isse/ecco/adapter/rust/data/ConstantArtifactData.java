@@ -18,7 +18,7 @@ public class ConstantArtifactData implements ArtifactData {
 
     @Override
     public String toString() {
-        return "ConstantArtifactData";
+        return this.getClass().getSimpleName() + ":";
     }
 
 }

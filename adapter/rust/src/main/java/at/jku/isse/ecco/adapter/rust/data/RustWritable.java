@@ -10,5 +10,5 @@ public interface RustWritable {
      * @param bw the BufferedWriter to write to
      * @throws IOException if an I/O error occurs
      */
-    public void write(BufferedWriter bw) throws IOException;
+    void write(BufferedWriter bw) throws IOException;
 }

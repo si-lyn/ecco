@@ -17,6 +17,6 @@ public class StaticArtifactData implements ArtifactData {
 
     @Override
     public String toString() {
-        return "StaticArtifactData:";
+        return this.getClass().getSimpleName() + ":";
     }
 }

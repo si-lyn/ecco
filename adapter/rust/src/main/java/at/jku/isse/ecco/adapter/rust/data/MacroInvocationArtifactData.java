@@ -18,6 +18,6 @@ public class MacroInvocationArtifactData implements ArtifactData {
 
     @Override
     public String toString() {
-        return "MacroInvocation:";
+        return this.getClass().getSimpleName() + ":";
     }
 }

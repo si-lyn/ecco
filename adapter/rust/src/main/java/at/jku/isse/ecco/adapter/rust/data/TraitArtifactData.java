@@ -17,6 +17,6 @@ public class TraitArtifactData implements ArtifactData {
 
     @Override
     public String toString() {
-        return "TraitArtifactData:";
+        return this.getClass().getSimpleName() + ":";
     }
 }

@@ -15,4 +15,9 @@ public class ExternCrateArtifactData implements ArtifactData {
         return Objects.hash("");
     }
 
+    @Override
+    public String toString() {
+        return this.getClass().getSimpleName() + ":";
+    }
+
 }

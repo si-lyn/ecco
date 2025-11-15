@@ -17,6 +17,6 @@ public class UnionArtifactData implements ArtifactData {
 
     @Override
     public String toString() {
-        return "UnionArtifactData:";
+        return this.getClass().getSimpleName() + ":";
     }
 }

@@ -14,4 +14,9 @@ public class BlockArtifactData implements ArtifactData {
     public int hashCode() {
         return Objects.hash("");
     }
+
+    @Override
+    public String toString() {
+        return this.getClass().getSimpleName() + ":";
+    }
 }

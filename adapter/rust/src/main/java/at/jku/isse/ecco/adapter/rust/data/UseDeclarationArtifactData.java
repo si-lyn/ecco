@@ -17,6 +17,6 @@ public class UseDeclarationArtifactData implements ArtifactData {
 
     @Override
     public String toString() {
-        return "UseDeclarationArtifactData:";
+        return this.getClass().getSimpleName() + ":";
     }
 }
