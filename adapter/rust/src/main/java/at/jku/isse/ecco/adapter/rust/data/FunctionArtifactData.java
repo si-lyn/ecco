@@ -1,21 +1,14 @@
 package at.jku.isse.ecco.adapter.rust.data;
 
 import at.jku.isse.ecco.artifact.ArtifactData;
-import lombok.Data;
 
 import java.io.BufferedWriter;
+import java.io.IOException;
 
-@Data
-public class FunctionArtifactData implements ArtifactData, RustWritable {
-
-    private final String signature;
-
-    public FunctionArtifactData(String signature) {
-        this.signature = signature;
-    }
+public record FunctionArtifactData(String signature) implements ArtifactData, RustWritable {
 
     @Override
-    public void write(BufferedWriter bw) throws java.io.IOException {
+    public void write(BufferedWriter bw) throws IOException {
         bw.write(this.signature);
     }
 }

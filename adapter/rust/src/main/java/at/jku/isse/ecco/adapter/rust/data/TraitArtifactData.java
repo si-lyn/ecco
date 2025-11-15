@@ -14,4 +14,9 @@ public class TraitArtifactData implements ArtifactData {
     public int hashCode() {
         return Objects.hash("");
     }
+
+    @Override
+    public String toString() {
+        return "TraitArtifactData:";
+    }
 }
