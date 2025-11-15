@@ -174,18 +174,6 @@ public class RustEccoVisitor extends RustParserBaseVisitor<Node.Op> {
         Node.Op blockNode = createArtifactOrderedNodeAndAddToParent(item, this.nodeStack.peek());
         this.addLineNodesFromContext(blockNode, ctx);
         return blockNode;
-//        if (ctx.LCURLYBRACE() != null) {
-//            Artifact.Op<LineArtifactData> line = this.entityFactory.createArtifact(new LineArtifactData("{"));
-//            blockNode.addChild(this.entityFactory.createOrderedNode(line));
-//        }
-//        this.nodeStack.push(blockNode);
-//        Node.Op visited = super.visitBlockExpression(ctx);
-//        nodeStack.pop();
-//        if (ctx.RCURLYBRACE() != null) {
-//            Artifact.Op<LineArtifactData> line = this.entityFactory.createArtifact(new LineArtifactData("}"));
-//            blockNode.addChild(this.entityFactory.createOrderedNode(line));
-//        }
-//        return visited;
     }
 
 
