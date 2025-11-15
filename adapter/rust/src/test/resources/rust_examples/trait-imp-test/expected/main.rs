@@ -2,34 +2,27 @@ trait Logger {
     fn log(&self, message: &str);
 }
 #[cfg(unix)]
+#[cfg(windows)]
 struct UnixLogger;
-#[cfg(unix)]
-impl Logger for UnixLogger {
-    fn log(&self, message: &str) {
-        println!("Unix log: {}", message);
-    }
-}
-#[cfg(windows)]
 struct WindowsLogger;
+#[cfg(unix)]
 #[cfg(windows)]
-impl Logger for WindowsLogger {
-    fn log(&self, message: &str) {
-        println!("Windows log: {}", message);
+impl Logger for UnixLogger {
+    impl Logger for WindowsLogger {
+        fn log(&self, message: &str) {
+            println!("Unix log: {}", message);
+            println!("Windows log: {}", message);
+        }
     }
-}
-fn perform_logging<L: Logger>(logger: L) {
-    logger.log("This is a platform-specific log message.");
-}
-fn main() {
-    #[cfg(unix)]
-    {
-        let logger = UnixLogger;
-        perform_logging(logger);
+    fn perform_logging<L: Logger>(logger: L) {
+        logger.log("This is a platform-specific log message.");
     }
-
-    #[cfg(windows)]
-    {
-        let logger = WindowsLogger;
-        perform_logging(logger);
+    fn main() {
+        #[cfg(unix)]
+        #[cfg(windows)]
+        {
+            let logger = UnixLogger;
+            let logger = WindowsLogger;
+            perform_logging(logger);
+        }
     }
-}
