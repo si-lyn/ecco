@@ -25,7 +25,9 @@ public class RustWriter implements ArtifactWriter<Set<Node>, Path> {
     @Override
     public String getPluginId() { return RustPlugin.class.getName(); }
 
+
     /**
+     * Writes the given artifacts to the specified base path.
      * @param base base path where to write the artifacts
      * @param input artifacts to write
      * @return paths to the written artifacts
@@ -37,10 +39,9 @@ public class RustWriter implements ArtifactWriter<Set<Node>, Path> {
         for (Node fileNode : input) {
             Artifact<?> fileArtifact = fileNode.getArtifact();
             ArtifactData artifactData = fileArtifact.getData();
-            if (!(artifactData instanceof PluginArtifactData)) {
+            if (!(artifactData instanceof PluginArtifactData pluginArtifactData)) {
                 throw new EccoException("Expected plugin artifact data.");
             }
-            PluginArtifactData pluginArtifactData = (PluginArtifactData) artifactData;
             Path outputPath = base.resolve(pluginArtifactData.getPath());
             output.add(outputPath);
 
@@ -52,7 +53,6 @@ public class RustWriter implements ArtifactWriter<Set<Node>, Path> {
 
     /**
      * Writes a Rust file based on the provided ordered node.
-     *
      * @param filePath    Path where the Rust file will be written.
      * @param orderedNode Node representing the structure of the Rust file.
      */
@@ -75,7 +75,7 @@ public class RustWriter implements ArtifactWriter<Set<Node>, Path> {
 
     /**
      * Recursively visits nodes and writes their data if they implement RustWritable.
-     *
+     * Writes the nodes depth-first.
      * @param bw        BufferedWriter to write to.
      * @param childNode Current node being visited.
      * @throws IOException If an I/O error occurs from the BufferedWriter.
@@ -87,12 +87,10 @@ public class RustWriter implements ArtifactWriter<Set<Node>, Path> {
             visibilityArtifactData.write(bw);
             return; // Dont visit children of visibility node
         }
-
         // childArtifactData has something to write
         if (childArtifactData instanceof RustWritable rustWritable) {
             rustWritable.write(bw);
         }
-
         // Visit children
         if (!childNode.getChildren().isEmpty()) {
             for (Node node : childNode.getChildren()) {
@@ -100,7 +98,6 @@ public class RustWriter implements ArtifactWriter<Set<Node>, Path> {
             }
         }
     }
-
 
     @Override
     public Path[] write(Set<Node> input) {
@@ -110,7 +107,6 @@ public class RustWriter implements ArtifactWriter<Set<Node>, Path> {
     @Override
     public void addListener(WriteListener listener) {
         this.listeners.add(listener);
-
     }
 
     @Override
