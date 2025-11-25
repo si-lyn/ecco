@@ -1,3 +1,4 @@
 target/*
 debug/*
 /src/test/*/actual/
+/src/test/resources/extractor/commit_*/
