@@ -198,8 +198,9 @@ OCT_LITERAL: '0o' '_'* OCT_DIGIT (OCT_DIGIT | '_')*;
 BIN_LITERAL: '0b' '_'* [01] [01_]*;
 
 FLOAT_LITERAL:
-                        {this.floatLiteralPossible()}? (
-        DEC_LITERAL '.' {this.floatDotPossible()}?
+    {this.FloatLiteralPossible()}?
+    (
+        DEC_LITERAL '.' {this.FloatDotPossible()}?
         | DEC_LITERAL ( '.' DEC_LITERAL)? FLOAT_EXPONENT? FLOAT_SUFFIX?
     )
 ;

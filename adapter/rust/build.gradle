@@ -7,11 +7,9 @@ plugins {
 group = 'at.jku.isse.ecco'
 version = '0.1.9'
 
-
 repositories {
     mavenCentral()
 }
-
 dependencies {
     antlr "org.antlr:antlr4:4.13.1"
     implementation "org.antlr:antlr4-runtime:4.13.1"
@@ -26,12 +24,17 @@ dependencies {
     testImplementation 'org.mockito:mockito-core:4.6.1'
 }
 
+def generatedSourceDir = file("${project.projectDir}/src/main/java/at/jku/isse/ecco/adapter/rust/antlr")
+
 tasks.register('addPackageDeclaration') {
     def packageLine = 'package at.jku.isse.ecco.adapter.rust.antlr;\n'
     def targetFiles = [
-            file("$projectDir/src/main/java/at/jku/isse/ecco/adapter/rust/antlr/RustLexerBase.java"),
-            file("$projectDir/src/main/java/at/jku/isse/ecco/adapter/rust/antlr/RustParserBase.java")
+            file("${generatedSourceDir}/RustLexerBase.java"),
+            file("${generatedSourceDir}/RustParserBase.java")
     ]
+    onlyIf {
+        targetFiles.any { it.exists()}
+    }
     doLast {
         targetFiles.each { file ->
             if (file.exists()) {
@@ -44,12 +47,17 @@ tasks.register('addPackageDeclaration') {
     }
 }
 
+
 tasks.register('downloadBaseParserBaselexer', Download) {
+    // Downloaded fro antlr/grammars-v4 repository
+    // Commit: 998300645c2b8c1e537d308cbe7d2c331ebe7d08
+    // Date : 2025-24-11
+    def commitHash = '998300645c2b8c1e537d308cbe7d2c331ebe7d08'
     src([
-            'https://raw.githubusercontent.com/antlr/grammars-v4/master/rust/Java/RustLexerBase.java',
-            'https://raw.githubusercontent.com/antlr/grammars-v4/master/rust/Java/RustParserBase.java',
+            "https://raw.githubusercontent.com/antlr/grammars-v4/${commitHash}/rust/Java/RustLexerBase.java",
+            "https://raw.githubusercontent.com/antlr/grammars-v4/${commitHash}/rust/Java/RustParserBase.java",
     ])
-    dest file("$projectDir/src/main/java/at/jku/isse/ecco/adapter/rust/antlr")
+    dest generatedSourceDir
     overwrite true
 }
 
@@ -57,13 +65,14 @@ downloadBaseParserBaselexer.finalizedBy addPackageDeclaration
 
 generateGrammarSource {
     dependsOn downloadBaseParserBaselexer
-    outputDirectory = new File("${project.projectDir}/src/main/java/at/jku/isse/ecco/adapter/rust/antlr".toString())
+    outputDirectory = generatedSourceDir
     arguments += ['-visitor']
     arguments += ['-package', 'at.jku.isse.ecco.adapter.rust.antlr']
 }
 
 generateTestGrammarSource {
-    outputDirectory = new File("${project.projectDir}/src/test/java/at/jku/isse/ecco/adapter/rust/antlr".toString())
+    dependsOn downloadBaseParserBaselexer
+    outputDirectory = generatedSourceDir
     arguments += ['-package', 'at.jku.isse.ecco.adapter.rust.antlr']
 }
 
@@ -72,6 +81,12 @@ test {
     testLogging {
         events "passed", "skipped", "failed"
     }
+}
+
+clean {
+    delete generateGrammarSource.outputDirectory
+    delete generateTestGrammarSource.outputDirectory
+    delete generatedSourceDir
 }
 
 compileJava.dependsOn generateGrammarSource
