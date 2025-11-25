@@ -1,8 +1,8 @@
-package at.jku.isse.ecco.adapter.rust.antlr;
+package at.jku.isse.ecco.adapter.rust;
 
 import at.jku.isse.ecco.service.EccoService;
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
@@ -10,8 +10,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
-import static at.jku.isse.ecco.adapter.rust.antlr.Utils.assertFilesEqual;
-import static at.jku.isse.ecco.adapter.rust.antlr.Utils.deleteDirectoryRecursively;
+import static at.jku.isse.ecco.adapter.rust.Utils.assertFilesEqual;
+import static at.jku.isse.ecco.adapter.rust.Utils.deleteDirectoryRecursively;
 
 class RustIntegrationTest {
     final Path testDir = Paths.get("src/test/resources/rust_examples/test_output").toAbsolutePath();
@@ -37,34 +37,21 @@ class RustIntegrationTest {
         }
     }
 
-    @AfterEach
-    void cleanUp() {
-        // Clean up test directory if it exists
-        if (Files.exists(testDir)) {
-            try {
-                deleteDirectoryRecursively(testDir);
-            } catch (IOException e) {
-                System.err.println("Failed to clean up test directory: " + e.getMessage());
-            }
+    // Disabled since comments are not supported by antlr parser
+    @Disabled
+    @Test
+    void comments() throws Exception {
+            Path testFolder = Paths.get("src/test/resources/rust_examples/commentTest/");
+            commitSingleDir(testFolder, service);
+        try {
+            service.checkout("comments.1");
+        } catch (Exception e) {
+            System.out.println("Exception during checkout: " + e.getMessage());
         }
-        service.close();
-        service = null;
+        Path actual = Paths.get("src/test/resources/rust_examples/commentTest/main.rs");
+        Path testOutput = Paths.get("src/test/resources/rust_examples/test_output/main.rs");
+        assertFilesEqual(actual, testOutput);
     }
-
-    // Commented out since comments are not supported in parser
-//    @Test
-//    void comments() throws Exception {
-//            Path testFolder = Paths.get("src/test/resources/rust_examples/commentTest/");
-//            commitSingleDir(testFolder, service);
-//        try {
-//            service.checkout("comments.1");
-//        } catch (Exception e) {
-//            System.out.println("Exception during checkout: " + e.getMessage());
-//        }
-//        Path actual = Paths.get("src/test/resources/rust_examples/commentTest/main.rs");
-//        Path testOutput = Paths.get("src/test/resources/rust_examples/test_output/main.rs");
-//        assertFilesEqual(actual, testOutput);
-//    }
 
     @Test
     void functionWithOuterAttribute() throws Exception {
@@ -129,6 +116,18 @@ class RustIntegrationTest {
     }
 
     @Test
+    void applicationV3() throws  Exception {
+        String[] folders = { "v3"};
+        String testFolderStr = "src/test/resources/rust_examples/application/";
+        commit(folders, testFolderStr, service);
+
+        service.checkout("base.1,create.1,get.1,updatePassword.1");
+        Path actual = Paths.get("src/test/resources/rust_examples/application/v3/main.rs");
+        Path testOutput = Paths.get("src/test/resources/rust_examples/test_output/main.rs");
+        assertFilesEqual(actual, testOutput);
+    }
+
+    @Test
     void applicationV1V2() throws  Exception {
         String[] folders = { "v1", "v2"};
         String testFolderStr = "src/test/resources/rust_examples/application/";
@@ -139,6 +138,19 @@ class RustIntegrationTest {
         Path testOutput = Paths.get("src/test/resources/rust_examples/test_output/main.rs");
         assertFilesEqual(actual, testOutput);
     }
+
+    @Test
+    void applicationV2V3() throws  Exception {
+        String[] folders = { "v2", "v3"};
+        String testFolderStr = "src/test/resources/rust_examples/application/";
+        commit(folders, testFolderStr, service);
+
+        service.checkout("create.1,getAll.1,updatePassword.1,base.1");
+        Path actual = Paths.get("src/test/resources/rust_examples/application/results/resultV2V3/main.rs");
+        Path testOutput = Paths.get("src/test/resources/rust_examples/test_output/main.rs");
+        assertFilesEqual(actual, testOutput);
+    }
+
 
     @Test
     void applicationV1V2V3() throws  Exception {
@@ -185,5 +197,6 @@ class RustIntegrationTest {
         service.commit();
         service.setBaseDir(this.testDir);
     }
+
 
 }
