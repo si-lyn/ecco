@@ -92,6 +92,19 @@ public class RustEccoVisitor extends RustParserBaseVisitor<Node.Op> {
         return moduleNode;
     }
 
+    // process outer attributes to get condition for feature trace
+    // Item can have multiple outer attributes, so we look for conditions in all of them
+    private Optional<String> getOuterAttributesConditions(List<RustParser.OuterAttributeContext> outerAttributes) {
+        List<String> conditions = outerAttributes.stream()
+                .map(attrCtx -> attrCtx.accept(this))
+                .map(node -> node.getProperty(CONDITION_PROPERTY))
+                .flatMap(Optional::stream)
+                .map(Object::toString)
+                .toList();
+        return conditions.isEmpty() ? Optional.empty() : Optional.of(String.join(" & ", conditions));
+    }
+
+
     @Override
     public Node.Op visitItem(RustParser.ItemContext ctx) {
         // If item has no children, the item is likely created by the antlr parser because of a parse error
@@ -100,17 +113,6 @@ public class RustEccoVisitor extends RustParserBaseVisitor<Node.Op> {
         }
         Artifact.Op<ItemArtifactData> item = this.entityFactory.createArtifact(new ItemArtifactData());
         Node.Op itemNode = createArtifactOrderedNodeAndAddToParent(item, nodeStack.peek());
-        nodeStack.push(itemNode);
-
-        // process outer attributes to get condition for feature trace
-        // Item can have multiple outer attributes, so we look for conditions in all of them
-        List<String> conditions = ctx.outerAttribute().stream()
-                .map(attrCtx -> attrCtx.accept(this))
-                .map(node -> node.getProperty(CONDITION_PROPERTY))
-                .flatMap(Optional::stream)
-                .map(Object::toString)
-                .toList();
-        String condition = conditions.isEmpty() ? "" : String.join(" & ", conditions); // to handle multiple conditions on an item
 
         Token stop = ctx.stop;
         // stop can be null in some cases, e.g., for macro items without a proper ending. So attempts to get stop from children
@@ -125,12 +127,14 @@ public class RustEccoVisitor extends RustParserBaseVisitor<Node.Op> {
         if (stop == null) {
             throw new EccoException("Cannot determine end of ItemContext at " + ctx.start.getLine() + " in " + this.path.toAbsolutePath() + "\n with text: " + ctx.getText());
         }
-
         Location location = new Location(ctx.start.getLine(), stop.getLine(), this.path, this.configuration);
         itemNode.putProperty("Location", location);
+
+        nodeStack.push(itemNode);
+        // @FIXME: tried to only do the buildProactiveConditionConjunction if thee condition is present, but that did not work
+        String condition = getOuterAttributesConditions(ctx.outerAttribute()).orElse("");
         FeatureTrace nodeTrace = itemNode.getFeatureTrace();
         nodeTrace.buildProactiveConditionConjunction(condition);
-
         // visit rest of the children of RustParser.ItemContext if they are present
         if (ctx.macroItem() != null) ctx.macroItem().accept(this);
         if (ctx.visItem() != null) ctx.visItem().accept(this);
@@ -291,10 +295,32 @@ public class RustEccoVisitor extends RustParserBaseVisitor<Node.Op> {
     public Node.Op visitEnumItem(RustParser.EnumItemContext ctx) {
         // content of enumArtifact is not used, it is only used as an identifier for the artifact, so the ecco hashcode and equals work properly
         Node.Op node = createSimpleNode(new EnumItemArtifactData(getString(ctx.identifier())));
+        this.nodeStack.push(node);
 
-        int startLine = ctx.getStart().getLine();
-        int endLine = ctx.getStop().getLine();
-        this.addLineNodes(node, startLine, endLine);
+        List<RustParser.OuterAttributeContext> outerAttributes = ctx.outerAttribute();
+        // extract condition from outer attributes if present and attach like in visitItem
+        String condition = getOuterAttributesConditions(outerAttributes).orElse("");
+        FeatureTrace nodeTrace = node.getFeatureTrace();
+        nodeTrace.buildProactiveConditionConjunction(condition);
+        // Collect all lines in the enum item range
+        int i = ctx.getStart().getLine();
+        List<Integer> lines = new ArrayList<>();
+        while (i <= ctx.getStop().getLine()) {
+            lines.add(i);
+            i++;
+        }
+        // Remove lines that are part of outer attributes because they are already added as separate nodes
+        for (RustParser.OuterAttributeContext outerAttribute : outerAttributes) {
+            int startLine = outerAttribute.getStart().getLine();
+            int endLine = outerAttribute.getStop().getLine();
+            lines.removeIf(line -> line >= startLine && line <= endLine);
+        }
+        // Add remaining lines as line artifacts
+        lines.stream().filter(Objects::nonNull).forEach(line -> {
+            Artifact.Op<LineArtifactData> lineArtifactData = this.entityFactory.createArtifact(new LineArtifactData(this.codeLines[line - 1]));
+            createArtifactOrderedNodeAndAddToParent(lineArtifactData, node);
+        });
+        this.nodeStack.pop();
         return node;
     }
 
