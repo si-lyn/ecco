@@ -41,6 +41,16 @@ class RustIntegrationTest {
         }
     }
 
+    @Test
+    void testAllItems() {
+        Path testFolder = Paths.get("src/test/resources/rust_examples/allItemsTest/");
+        commitSingleDir(testFolder, service);
+        service.checkout("all_items.1");
+        Path actual = Paths.get("src/test/resources/rust_examples/allItemsTest/main.rs");
+        Path testOutput = Paths.get("src/test/resources/rust_examples/test_output/main.rs");
+        assertFilesEqual(actual, testOutput);
+    }
+
     // Disabled since comments are not supported by antlr parser
     @Disabled
     @Test
@@ -131,7 +141,7 @@ class RustIntegrationTest {
         if (folders.length == 1) {
             expected = Paths.get("src/test/resources/rust_examples/application/" + folders[0] + "/main.rs");
         } else {
-            String resultFolderName = "result" + String.join("", Arrays.stream(folders).map(f -> f.toUpperCase()).collect(Collectors.toList()));
+            String resultFolderName = "result" + Arrays.stream(folders).map(String::toUpperCase).collect(Collectors.joining(""));
             expected = Paths.get("src/test/resources/rust_examples/application/results/" + resultFolderName + "/main.rs");
         }
 
