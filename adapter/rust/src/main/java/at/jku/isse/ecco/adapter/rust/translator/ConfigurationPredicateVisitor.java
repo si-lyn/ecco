@@ -1,11 +1,14 @@
 package at.jku.isse.ecco.adapter.rust.translator;
 
+import at.jku.isse.ecco.EccoException;
 import at.jku.isse.ecco.adapter.rust.antlr.RustParser;
 import at.jku.isse.ecco.adapter.rust.antlr.RustParserBaseVisitor;
 import at.jku.isse.ecco.logic.FormulaFactoryProvider;
 import org.logicng.formulas.Formula;
 import org.logicng.formulas.FormulaFactory;
 
+/** Visitor to translate Rust configuration predicates into loginNG formulas.
+ */
 public class ConfigurationPredicateVisitor extends RustParserBaseVisitor<Formula> {
     private final FormulaFactory f = FormulaFactoryProvider.getFormulaFactory();
 
@@ -38,15 +41,22 @@ public class ConfigurationPredicateVisitor extends RustParserBaseVisitor<Formula
     @Override
     public Formula visitConfigurationOption(RustParser.ConfigurationOptionContext ctx) {
         String featureName = ctx.identifier().getText();
-        String value = null;
-
+        String value;
         // Handle feature = "value" case
         if (ctx.EQ() != null) {
-            value = ctx.STRING_LITERAL() != null ?
-                    ctx.STRING_LITERAL().getText() :
-                    ctx.RAW_STRING_LITERAL().getText();
-            // Remove quotes
-            value = value.substring(1, value.length() - 1);
+            if (ctx.STRING_LITERAL() != null) {
+                value = ctx.STRING_LITERAL().getText();
+                // Remove quotes
+                value = value.substring(1, value.length() - 1);
+            } else if (ctx.RAW_STRING_LITERAL() != null ) { // Handle raw string literals
+                value = ctx.RAW_STRING_LITERAL().getText();
+                // Remove r#" and "# or similar
+                int firstQuoteIndex = value.indexOf('"') + 1;
+                int lastQuoteIndex = value.lastIndexOf('"');
+                value = value.substring(firstQuoteIndex, lastQuoteIndex);
+            } else {
+                throw new EccoException("there where no raw string or string found in configuration option:" + ctx.getText());
+            }
             return f.variable("#" + featureName + "_" + value);
         } else {
             // Handle simple feature case
