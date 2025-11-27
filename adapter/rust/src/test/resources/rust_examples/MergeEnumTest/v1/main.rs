@@ -2,6 +2,7 @@
 #[command(rename_all = "lowercase")]
 pub enum Commands {
     /// Change the password for an existing user
+    #[cfg(feature = "change")]
     Change {
         /// The username whose password will be changed
         #[arg(short, long)]
@@ -11,5 +12,6 @@ pub enum Commands {
         password: String,
     },
     /// Get all users
+    #[cfg(feature = "get_all")]
     GetAll,
 }
