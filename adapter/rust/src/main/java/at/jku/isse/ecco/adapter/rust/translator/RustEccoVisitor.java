@@ -135,6 +135,7 @@ public class RustEccoVisitor extends RustParserBaseVisitor<Node.Op> {
         String condition = getOuterAttributesConditions(ctx.outerAttribute()).orElse("");
         FeatureTrace nodeTrace = itemNode.getFeatureTrace();
         nodeTrace.buildProactiveConditionConjunction(condition);
+
         // visit rest of the children of RustParser.ItemContext if they are present
         if (ctx.macroItem() != null) ctx.macroItem().accept(this);
         if (ctx.visItem() != null) ctx.visItem().accept(this);
@@ -246,7 +247,75 @@ public class RustEccoVisitor extends RustParserBaseVisitor<Node.Op> {
 
     @Override
     public Node.Op visitImplementation(RustParser.ImplementationContext ctx) {
-        return createNodeWithLines(new ImplementationArtifactData(), ctx);
+        // we need to visit the associated items to add them as child nodes
+        // rest should be added as line nodes
+        Node.Op node = createSimpleNode(new ImplementationArtifactData());
+        this.nodeStack.push(node);
+        super.visitImplementation(ctx);
+        this.nodeStack.pop();
+        return node;
+    }
+
+
+    @Override
+    public Node.Op visitInherentImpl(RustParser.InherentImplContext ctx) {
+        // Add everything as line nodes, except the associated items which are handled in visitAssociatedItem
+        int assocItemStartLine;
+        int assocItemEndLine;
+        if (ctx.associatedItem().getFirst() != null) {
+            assocItemStartLine = ctx.associatedItem(0).getStart().getLine();
+            assocItemEndLine = ctx.associatedItem().getLast().getStop().getLine();
+        } else {
+            this.addLineNodesFromContext(nodeStack.peek(), ctx);
+            return null;
+        }
+
+        int ctxStartLine = ctx.getStart().getLine();
+        int ctxEndLine = ctx.getStop().getLine();
+        // add lines before
+        this.addLineNodes(nodeStack.peek(), ctxStartLine, assocItemStartLine-1);
+
+        ctx.associatedItem().forEach(item -> item.accept(this));
+        // add lines after
+        this.addLineNodes(nodeStack.peek(), assocItemEndLine+1, ctxEndLine);
+
+        return null;
+    }
+
+    @Override
+    public Node.Op visitTraitImpl(RustParser.TraitImplContext ctx) {
+        // Add everything as line nodes, except the associated items which are handled in visitAssociatedItem
+        int assocItemStartLine;
+        int assocItemEndLine;
+        if (ctx.associatedItem().getFirst() != null) {
+            assocItemStartLine = ctx.associatedItem(0).getStart().getLine();
+            assocItemEndLine = ctx.associatedItem().getLast().getStop().getLine();
+        } else {
+            this.addLineNodesFromContext(nodeStack.peek(), ctx);
+            return null;
+        }
+
+        int ctxStartLine = ctx.getStart().getLine();
+        int ctxEndLine = ctx.getStop().getLine();
+        // add lines before
+        this.addLineNodes(nodeStack.peek(), ctxStartLine, assocItemStartLine-1);
+
+        ctx.associatedItem().forEach(item -> item.accept(this));
+        // add lines after
+        this.addLineNodes(nodeStack.peek(), assocItemEndLine+1, ctxEndLine);
+
+        return null;
+    }
+
+    @Override
+    public Node.Op visitAssociatedItem(RustParser.AssociatedItemContext ctx) {
+        Node.Op implNode = this.nodeStack.peek();
+        String condition = getOuterAttributesConditions(ctx.outerAttribute()).orElse("");
+        FeatureTrace nodeTrace = implNode.getFeatureTrace();
+        nodeTrace.buildProactiveConditionConjunction(condition);
+
+        // visit either TypeAlias, Function_ or ConstantItem
+        return super.visitAssociatedItem(ctx);
     }
 
     @Override
@@ -300,6 +369,7 @@ public class RustEccoVisitor extends RustParserBaseVisitor<Node.Op> {
         List<RustParser.OuterAttributeContext> outerAttributes = ctx.outerAttribute();
         // extract condition from outer attributes if present and attach like in visitItem
         String condition = getOuterAttributesConditions(outerAttributes).orElse("");
+        // TODO should we only do this if condition is present? But when this is done the struct test does not write main.rs file
         FeatureTrace nodeTrace = node.getFeatureTrace();
         nodeTrace.buildProactiveConditionConjunction(condition);
         // Collect all lines in the enum item range
