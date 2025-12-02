@@ -262,14 +262,13 @@ public class RustEccoVisitor extends RustParserBaseVisitor<Node.Op> {
         // Add everything as line nodes, except the associated items which are handled in visitAssociatedItem
         int assocItemStartLine;
         int assocItemEndLine;
-        if (ctx.associatedItem().getFirst() != null) {
+        if (ctx.associatedItem() != null && !ctx.associatedItem().isEmpty()) {
             assocItemStartLine = ctx.associatedItem(0).getStart().getLine();
             assocItemEndLine = ctx.associatedItem().getLast().getStop().getLine();
         } else {
             this.addLineNodesFromContext(nodeStack.peek(), ctx);
             return null;
         }
-
         int ctxStartLine = ctx.getStart().getLine();
         int ctxEndLine = ctx.getStop().getLine();
         // add lines before
@@ -287,7 +286,7 @@ public class RustEccoVisitor extends RustParserBaseVisitor<Node.Op> {
         // Add everything as line nodes, except the associated items which are handled in visitAssociatedItem
         int assocItemStartLine;
         int assocItemEndLine;
-        if (ctx.associatedItem().getFirst() != null) {
+        if (ctx.associatedItem() != null && !ctx.associatedItem().isEmpty()) {
             assocItemStartLine = ctx.associatedItem(0).getStart().getLine();
             assocItemEndLine = ctx.associatedItem().getLast().getStop().getLine();
         } else {
@@ -309,9 +308,10 @@ public class RustEccoVisitor extends RustParserBaseVisitor<Node.Op> {
 
     @Override
     public Node.Op visitAssociatedItem(RustParser.AssociatedItemContext ctx) {
-        Node.Op implNode = this.nodeStack.peek();
+        Node.Op AssociatedItemNode = this.createSimpleNode(new AssociatedItemArtifactData());
         String condition = getOuterAttributesConditions(ctx.outerAttribute()).orElse("");
-        FeatureTrace nodeTrace = implNode.getFeatureTrace();
+
+        FeatureTrace nodeTrace = AssociatedItemNode.getFeatureTrace();
         nodeTrace.buildProactiveConditionConjunction(condition);
 
         // visit either TypeAlias, Function_ or ConstantItem
