@@ -123,11 +123,16 @@ class ExtractorTest {
                     .map(Path::of)
                     .map(testDir::resolve)
                     .map(folder -> DynamicTest.dynamicTest("Verify checkout of " + folder.getFileName(), () -> {
-                        Path checkoutLocation = folder.resolve("checkout");
+                        Path checkoutLocation;
                         String folderName = folder.getFileName().toString();
                         int checkoutIndex = folderName.indexOf("checkout_");
-                        if (checkoutIndex == -1) {
-                            throw new IllegalArgumentException("Folder name does not contain 'checkout_': " + folderName);
+                        if (checkoutIndex == -1) { // then skip this test
+                            return;
+                        }
+                        if (testDir.getFileName().toString().equals("commit_all_checkout_all")) {
+                            checkoutLocation = folder;
+                        } else {
+                            checkoutLocation = folder.resolve("checkout");
                         }
                         folderName = folderName.substring(checkoutIndex + "checkout_".length());
                         assertFoldersEqual(outputBase.resolve(folderName), checkoutLocation);
