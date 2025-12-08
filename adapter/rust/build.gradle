@@ -59,6 +59,7 @@ tasks.register('downloadBaseParserBaselexer', Download) {
     ])
     dest generatedSourceDir
     overwrite true
+    quiet true
 }
 
 downloadBaseParserBaselexer.finalizedBy addPackageDeclaration
