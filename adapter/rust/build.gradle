@@ -92,3 +92,12 @@ clean {
 
 compileJava.dependsOn generateGrammarSource
 compileTestJava.dependsOn generateTestGrammarSource
+
+tasks.register("benchmark", JavaExec) {
+    group = "benchmark"
+    dependsOn testClasses
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass.set("at.jku.isse.ecco.adapter.rust.Benchmark")
+    description = "Run the benchmark class at.jku.isse.ecco.adapter.rust.Benchmark"
+    workingDir = rootProject.projectDir
+}
