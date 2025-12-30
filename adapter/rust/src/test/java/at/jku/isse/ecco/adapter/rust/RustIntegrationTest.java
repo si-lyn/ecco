@@ -85,13 +85,17 @@ class RustIntegrationTest {
     }
 
     @Test
-    void struct() {
-        Path testFolder = Paths.get("src/test/resources/rust_examples/structTest/");
-        commitSingleDir(testFolder, service);
+    void struct() throws IOException {
+        Path testFolder = Paths.get("src/test/resources/rust_examples/structTest/").toAbsolutePath();
+        Path result = testFolder.resolve("result");
+        service.setBaseDir(testFolder);
+        service.commit();
+        deleteDirectoryRecursively(result);
+        Files.createDirectories(result);
+        service.setBaseDir(result);
         service.checkout("struct.1");
-        Path actual = Paths.get("src/test/resources/rust_examples/structTest/main.rs");
-        Path testOutput = Paths.get("src/test/resources/rust_examples/test_output/main.rs");
-        assertFilesEqual(actual, testOutput);
+        Path expected = Paths.get("src/test/resources/rust_examples/structTest/main.rs");
+        assertFilesEqual(expected, result.resolve("main.rs"));
     }
 
     @Test
@@ -113,9 +117,9 @@ class RustIntegrationTest {
                 Arguments.of(new String[] { "v2" }, "base.1,create.1,getAll.1"),
                 Arguments.of(new String[] { "v3" }, "base.1,create.1,get.1,updatePassword.1"),
                 Arguments.of(new String[] { "v1", "v2" }, "base.1,create.1,get.1,getAll.1"),
-                Arguments.of(new String[] { "v2", "v3" }, "create.1,getAll.1,updatePassword.1,base.1"),
+                Arguments.of(new String[] { "v2", "v3" }, "create.1,getAll.1,updatePassword.1,base.1,get.1"),
                 Arguments.of(new String[] { "v1", "v3" }, "base.1,create.1,get.1,updatePassword.1"),
-                Arguments.of(new String[] { "v1", "v2", "v3" }, "create.1,get.1,getAll.1,change.1,base.1")
+                Arguments.of(new String[] { "v1", "v2", "v3" }, "create.1,get.1,getAll.1,base.1,updatePassword.1")
         );
     }
 
@@ -124,7 +128,7 @@ class RustIntegrationTest {
      * @param checkoutConfig Configuration string for checkout
      * @throws IOException
      */
-    @ParameterizedTest
+    @ParameterizedTest(name = "commit={0}, checkout={1}")
     @MethodSource("provideApplicationVariants")
     @DisplayName("Application Variants Commit and Checkout Test")
     void applicationVariants(String[] folders,  String checkoutConfig) throws IOException {
@@ -199,8 +203,8 @@ class RustIntegrationTest {
         Files.deleteIfExists(actualDir.resolve("main.rs"));
         service.checkout("unix_logger.1, windows_logger.1");
         Path actual = actualDir.resolve("main.rs");
-        Path testOutput = testLocation.resolve("expected/main.rs");
-        assertFilesEqual(actual, testOutput);
+        Path expected = testLocation.resolve("expected/main.rs");
+        assertFilesEqual(actual, expected);
     }
 
 
