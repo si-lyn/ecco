@@ -110,7 +110,6 @@ class RustIntegrationTest {
     }
 
 
-    //  @TODO create v1, v3 results for application variants
     private static Stream<Arguments> provideApplicationVariants() {
         return Stream.of(
                 Arguments.of(new String[] { "v1" }, "base.1,create.1,get.1"),

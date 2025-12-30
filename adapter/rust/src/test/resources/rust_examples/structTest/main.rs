@@ -1,5 +1,6 @@
 struct Point {
     x: i32,
+    #[cfg(feature = "extra")]
     y: i32,
 }
 struct Wrapper<T>
