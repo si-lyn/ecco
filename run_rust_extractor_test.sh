@@ -27,6 +27,7 @@ echo "Do you wish to also check with Cargo Checker? (y/n)"
 read -r answer
 if [[ "$answer" == "y" || "$answer" == "Y" ]]; then
     ./adapter/rust/src/test/resources/extractor/run_rust_extractor_tests.sh
+    echo "Cargo Checker tests completed. Check ./adapter/rust/src/test/resources/extractor/cargo_checker_output.txt for details."
 else
     echo "Skipping Cargo Checker."
 fi
