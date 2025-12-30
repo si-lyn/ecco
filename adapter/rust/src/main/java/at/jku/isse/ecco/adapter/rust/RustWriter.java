@@ -80,7 +80,7 @@ public class RustWriter implements ArtifactWriter<Set<Node>, Path> {
      * @param childNode Current node being visited.
      * @throws IOException If an I/O error occurs from the BufferedWriter.
      */
-    public void visitingNode(BufferedWriter bw, Node childNode) throws IOException {
+    private void visitingNode(BufferedWriter bw, Node childNode) throws IOException {
         ArtifactData childArtifactData = childNode.getArtifact().getData();
         // Special handling for VisibilityArtifactData
         if (childArtifactData instanceof VisibilityArtifactData visibilityArtifactData) {
