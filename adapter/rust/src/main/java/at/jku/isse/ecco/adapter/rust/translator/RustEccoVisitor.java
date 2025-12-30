@@ -21,6 +21,7 @@ import java.util.*;
 
 public class RustEccoVisitor extends RustParserBaseVisitor<Node.Op> {
     private static final String CONDITION_PROPERTY = "condition";
+    private static final String LOCATION_PROPERTY = "Location";
     private final Deque<Node.Op> nodeStack = new ArrayDeque<>();
     private final Node.Op pluginNode;
     private final String[] codeLines;
@@ -61,7 +62,7 @@ public class RustEccoVisitor extends RustParserBaseVisitor<Node.Op> {
     @Override
     public Node.Op visitVisibility(RustParser.VisibilityContext ctx) {
         //does not create LineNodes because writing pub is handled by RustWriter
-        return createSimpleNode(new VisibilityArtifactData(getString(ctx)));
+        return createSimpleNodeAndAddLocationFromContext(new VisibilityArtifactData(getString(ctx)),ctx);
     }
 
     // Comments in module not tracked since they are not parsed
@@ -79,7 +80,7 @@ public class RustEccoVisitor extends RustParserBaseVisitor<Node.Op> {
             //module contains something
             sig.append(" {");
         }
-        Node.Op moduleNode = createSimpleNode(new ModuleArtifactData(sig.toString()));
+        Node.Op moduleNode = createSimpleNodeAndAddLocationFromContext(new ModuleArtifactData(sig.toString()),ctx);
 
         // no semicolon means module contains items
         if (ctx.SEMI() == null) {
@@ -128,7 +129,7 @@ public class RustEccoVisitor extends RustParserBaseVisitor<Node.Op> {
             throw new EccoException("Cannot determine end of ItemContext at " + ctx.start.getLine() + " in " + this.path.toAbsolutePath() + "\n with text: " + ctx.getText());
         }
         Location location = new Location(ctx.start.getLine(), stop.getLine(), this.path, this.configuration);
-        itemNode.putProperty("Location", location);
+        itemNode.putProperty(LOCATION_PROPERTY, location);
 
         nodeStack.push(itemNode);
         // @FIXME: tried to only do the buildProactiveConditionConjunction if thee condition is present, but that did not work
@@ -169,7 +170,7 @@ public class RustEccoVisitor extends RustParserBaseVisitor<Node.Op> {
 
     @Override
     public Node.Op visitFunction_(RustParser.Function_Context ctx) {
-        Node.Op functionNode = createSimpleNode(new FunctionArtifactData(this.getFunctionSignature(ctx)));
+        Node.Op functionNode = createSimpleNodeAndAddLocationFromContext(new FunctionArtifactData(this.getFunctionSignature(ctx)), ctx);
 
         this.nodeStack.push(functionNode);
         // visit all childen as some may want to add children to function node
@@ -249,7 +250,7 @@ public class RustEccoVisitor extends RustParserBaseVisitor<Node.Op> {
     public Node.Op visitImplementation(RustParser.ImplementationContext ctx) {
         // we need to visit the associated items to add them as child nodes
         // rest should be added as line nodes
-        Node.Op node = createSimpleNode(new ImplementationArtifactData());
+        Node.Op node = createSimpleNodeAndAddLocationFromContext(new ImplementationArtifactData(), ctx);
         this.nodeStack.push(node);
         super.visitImplementation(ctx);
         this.nodeStack.pop();
@@ -308,10 +309,10 @@ public class RustEccoVisitor extends RustParserBaseVisitor<Node.Op> {
 
     @Override
     public Node.Op visitAssociatedItem(RustParser.AssociatedItemContext ctx) {
-        Node.Op AssociatedItemNode = this.createSimpleNode(new AssociatedItemArtifactData());
+        Node.Op associatedItemNode = this.createSimpleNodeAndAddLocationFromContext(new AssociatedItemArtifactData(), ctx);
         String condition = getOuterAttributesConditions(ctx.outerAttribute()).orElse("");
 
-        FeatureTrace nodeTrace = AssociatedItemNode.getFeatureTrace();
+        FeatureTrace nodeTrace = associatedItemNode.getFeatureTrace();
         nodeTrace.buildProactiveConditionConjunction(condition);
 
         // visit either TypeAlias, Function_ or ConstantItem
@@ -330,7 +331,8 @@ public class RustEccoVisitor extends RustParserBaseVisitor<Node.Op> {
 
     @Override
     public Node.Op visitEnumeration(RustParser.EnumerationContext ctx) {
-        Node.Op node = createSimpleNode(new EnumArtifactData());
+
+        Node.Op node = createSimpleNodeAndAddLocationFromContext(new EnumArtifactData(), ctx);
 
         // Inside visitEnumeration
         int enumStartLine = ctx.getStart().getLine();
@@ -355,48 +357,46 @@ public class RustEccoVisitor extends RustParserBaseVisitor<Node.Op> {
         this.nodeStack.pop();
 
         // Add lines after enumItems
-        this.addLineNodes(node, itemsEndLine+1, enumEndLine);
+        if (itemsEndLine < enumEndLine) {
+            this.addLineNodes(node, itemsEndLine+1, enumEndLine);
+        }
 
         return node;
     }
 
     @Override
     public Node.Op visitEnumItem(RustParser.EnumItemContext ctx) {
-        // content of enumArtifact is not used, it is only used as an identifier for the artifact, so the ecco hashcode and equals work properly
-        Node.Op node = createSimpleNode(new EnumItemArtifactData(getString(ctx.identifier())));
+        Node.Op node = createSimpleNodeAndAddLocationFromContext(new EnumItemArtifactData(getString(ctx.identifier())), ctx);
         this.nodeStack.push(node);
 
         List<RustParser.OuterAttributeContext> outerAttributes = ctx.outerAttribute();
-        // extract condition from outer attributes if present and attach like in visitItem
         String condition = getOuterAttributesConditions(outerAttributes).orElse("");
-        // TODO should we only do this if condition is present? But when this is done the struct test does not write main.rs file
         FeatureTrace nodeTrace = node.getFeatureTrace();
         nodeTrace.buildProactiveConditionConjunction(condition);
-        // Collect all lines in the enum item range
-        int i = ctx.getStart().getLine();
-        List<Integer> lines = new ArrayList<>();
-        while (i <= ctx.getStop().getLine()) {
-            lines.add(i);
-            i++;
+
+        // Calculate line range excluding outer attributes
+        int startLine = ctx.getStart().getLine();
+        int endLine = ctx.getStop().getLine();
+
+        if (!outerAttributes.isEmpty()) {
+            // Start after the last outer attribute
+            startLine = Math.max(startLine, outerAttributes.get(outerAttributes.size() - 1).getStop().getLine() + 1);
         }
-        // Remove lines that are part of outer attributes because they are already added as separate nodes
-        for (RustParser.OuterAttributeContext outerAttribute : outerAttributes) {
-            int startLine = outerAttribute.getStart().getLine();
-            int endLine = outerAttribute.getStop().getLine();
-            lines.removeIf(line -> line >= startLine && line <= endLine);
+
+        // Add lines for the actual enum item content (identifier, fields, discriminant)
+        // but NOT the trailing comma (handled by parent)
+        if (startLine <= endLine) {
+            addLineNodes(node, startLine, endLine);
         }
-        // Add remaining lines as line artifacts
-        lines.stream().filter(Objects::nonNull).forEach(line -> {
-            Artifact.Op<LineArtifactData> lineArtifactData = this.entityFactory.createArtifact(new LineArtifactData(this.codeLines[line - 1]));
-            createArtifactOrderedNodeAndAddToParent(lineArtifactData, node);
-        });
+
         this.nodeStack.pop();
         return node;
     }
 
+
     @Override
     public Node.Op visitMacroInvocationSemi(RustParser.MacroInvocationSemiContext ctx) {
-        Node.Op node = createSimpleNode(new MacroInvocationArtifactData());
+        Node.Op node = createSimpleNodeAndAddLocationFromContext(new MacroInvocationArtifactData(), ctx);
 
         int startLine = ctx.getStart().getLine();
         int endLine = ctx.getStop().getLine();
@@ -474,7 +474,9 @@ public class RustEccoVisitor extends RustParserBaseVisitor<Node.Op> {
                 continue;
             }
             Artifact.Op<LineArtifactData> lineArtifactData = this.entityFactory.createArtifact(new LineArtifactData(codeLine));
-            createArtifactOrderedNodeAndAddToParent(lineArtifactData, parentNode);
+            Node.Op node = createArtifactOrderedNodeAndAddToParent(lineArtifactData, parentNode);
+            Location location = new Location(i, i, this.path, this.configuration);
+            node.putProperty(LOCATION_PROPERTY, location);
         }
     }
 
@@ -494,7 +496,9 @@ public class RustEccoVisitor extends RustParserBaseVisitor<Node.Op> {
             if (!codeLine.isEmpty()) {
                 String extractedLine = codeLine.substring(startPosition, Math.min(endPosition, codeLine.length()));
                 Artifact.Op<LineArtifactData> lineArtifactData = this.entityFactory.createArtifact(new LineArtifactData(extractedLine));
-                createArtifactOrderedNodeAndAddToParent(lineArtifactData, parentNode);
+                Node.Op node = createArtifactOrderedNodeAndAddToParent(lineArtifactData, parentNode);
+                Location location = new Location(startLine, endLine, this.path, this.configuration);
+                node.putProperty(LOCATION_PROPERTY, location);
             }
             return;
         }
@@ -517,7 +521,9 @@ public class RustEccoVisitor extends RustParserBaseVisitor<Node.Op> {
                 extractedLine = codeLine;
             }
             Artifact.Op<LineArtifactData> lineArtifactData = this.entityFactory.createArtifact(new LineArtifactData(extractedLine));
-            createArtifactOrderedNodeAndAddToParent(lineArtifactData, parentNode);
+            Node.Op node = createArtifactOrderedNodeAndAddToParent(lineArtifactData, parentNode);
+            Location location = new Location(i, i, this.path, this.configuration);
+            node.putProperty(LOCATION_PROPERTY, location);
         }
     }
 
@@ -553,9 +559,14 @@ public class RustEccoVisitor extends RustParserBaseVisitor<Node.Op> {
      * @param artifactData the ArtifactData for the node
      * @return Node.Op containing the artifact
      */
-    private <T extends ArtifactData> Node.Op createSimpleNode(T artifactData) {
+    private <T extends ArtifactData> Node.Op createSimpleNodeAndAddLocationFromContext(T artifactData, ParserRuleContext ctx) {
         Artifact.Op<T> artifact = this.entityFactory.createArtifact(artifactData);
-        return createArtifactOrderedNodeAndAddToParent(artifact, nodeStack.peek());
+        Node.Op node = createArtifactOrderedNodeAndAddToParent(artifact, nodeStack.peek());
+        int start = ctx.getStart().getLine();
+        int stop = ctx.getStop().getLine();
+        Location location = new Location(start, stop, this.path, this.configuration);
+        node.putProperty(LOCATION_PROPERTY, location);
+        return node;
     }
 
     /** Create a node with line artifacts for each line in the given context
@@ -564,7 +575,8 @@ public class RustEccoVisitor extends RustParserBaseVisitor<Node.Op> {
      * @return Node.Op containing the main artifact and line artifacts as children
      */
     private <T extends ArtifactData> Node.Op createNodeWithLines(T artifactData, ParserRuleContext ctx) {
-        Node.Op node = createSimpleNode(artifactData);
+        Artifact.Op<T> artifact = this.entityFactory.createArtifact(artifactData);
+        Node.Op node = createArtifactOrderedNodeAndAddToParent(artifact, nodeStack.peek());
         this.addLineNodesFromContext(node, ctx);
         return node;
     }
